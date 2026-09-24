@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kstore Database Manager (สำหรับผู้ดูแลระบบ Admin)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    * { font-family: 'Sarabun', sans-serif; }
+    .tab-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    }
+    th, td { white-space: nowrap; }
+    .toast {
+      animation: fadeInOut 3s forwards;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(10px); }
+      15% { opacity: 1; transform: translateY(0); }
+      85% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-10px); }
+    }
+  </style>
+  <!-- ================= ANTI-DEVTOOLS & SECURITY PROTECTION ================= -->
+  <script>
+    (function() {
+      // 📱 ข้ามการทำงานทั้งหมดบนสมาร์ทโฟนและแท็บเล็ต เพื่อให้คีย์บอร์ดและพิมพ์ข้อความได้สะดวก 100%
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) 
+        || ('ontouchstart' in window);
+
+      if (isMobile) {
+        return; // ไม่ต้องป้องกันใดๆ บนมือถือ
+      }
+
+      // Secret key to allow DevTools for Admin on PC: Ctrl + Alt + Shift + D
+      let devtoolsAllowed = sessionStorage.getItem('kstore_allow_devtools_viewer') === 'true';
+
+      window.enableDevTools = function() {
+        devtoolsAllowed = true;
+        sessionStorage.setItem('kstore_allow_devtools_viewer', 'true');
+        console.log('%c[Security] DevTools Protection temporarily unlocked for this session.', 'color:green; font-weight:bold;');
+        const lock = document.getElementById('devtoolsLockOverlay');
+        if (lock) lock.classList.add('hidden');
+      };
+
+      // 1. Disable Right-Click Context Menu on PC
+      document.addEventListener('contextmenu', function(e) {
+        if (devtoolsAllowed) return;
+        e.preventDefault();
+        return false;
+      }, { capture: true });
+
+      // 2. Disable Keyboard Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
+      document.addEventListener('keydown', function(e) {
+        // Admin unlock combo: Ctrl + Alt + Shift + D
+        if (e.ctrlKey && e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+          e.preventDefault();
+          window.enableDevTools();
+          alert('🔓 ปลดล็อกโหมดผู้พัฒนา (DevTools Unlocked) สำหรับเซสชันนี้เรียบร้อยแล้ว');
+          return;
+        }
+
+        if (devtoolsAllowed) return;
+
+        // F12
+        if (e.key === 'F12' || e.keyCode === 123) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+
+        // Ctrl + Shift + I / J / C (Inspect / Console)
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+
+        // Ctrl + U (View Source)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+
+        // Ctrl + S (Save Page)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }, { capture: true });
+
+      // 3. DevTools Open Detection & Security Lock Screen (Desktop Only)
+      function showDevToolsLock() {
+        if (devtoolsAllowed) return;
+        let overlay = document.getElementById('devtoolsLockOverlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'devtoolsLockOverlay';
+          overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;color:#ffffff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:20px;';
+          overlay.innerHTML = `
+            <div style="background:#1e293b;padding:30px;border-radius:20px;border:1px solid #334155;max-width:460px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+              <div style="font-size:48px;margin-bottom:12px;">🛡️</div>
+              <h2 style="font-size:20px;font-weight:bold;margin-bottom:8px;color:#f43f5e;">ระบบความปลอดภัย (Security Alert)</h2>
+              <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px;">
+                ตรวจพบการเปิดเครื่องมือผู้พัฒนา (DevTools)<br>
+                ระบบจำกัดการเข้าถึงโครงสร้างและซอร์สโค้ดเพื่อความปลอดภัยของฐานข้อมูล
+              </p>
+              <p style="font-size:12px;color:#64748b;">
+                กรุณาปิดหน้าต่าง DevTools / Inspect Element แล้วรีเฟรชหน้าเว็บใหม่อีกครั้ง
+              </p>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        } else {
+          overlay.classList.remove('hidden');
+        }
+      }
+
+      function hideDevToolsLock() {
+        const overlay = document.getElementById('devtoolsLockOverlay');
+        if (overlay) overlay.classList.add('hidden');
+      }
+
+      // Check DevTools via Window outer/inner dimensions
+      setInterval(function() {
+        if (devtoolsAllowed) return;
+        const threshold = 180;
+        const widthDiff = window.outerWidth - window.innerWidth;
+        const heightDiff = window.outerHeight - window.innerHeight;
+        if (widthDiff > threshold || heightDiff > threshold) {
+          showDevToolsLock();
+        } else {
+          const overlay = document.getElementById('devtoolsLockOverlay');
+          if (overlay && !overlay.classList.contains('hidden')) {
+            hideDevToolsLock();
+          }
+        }
+      }, 800);
+
+      // Console Warning
+      try {
+        console.log('%c⚠️ คำเตือนด้านความปลอดภัย (SECURITY WARNING)', 'color:#ef4444; font-size:22px; font-weight:bold;');
+        console.log('%cระบบจัดการฐานข้อมูล Kstore ได้รับการคุ้มครองความปลอดภัย การแทรกแซงโค้ดอาจส่งผลต่อความถูกต้องของฐานข้อมูล', 'font-size:12px; color:#64748b;');
+      } catch(e) {}
+    })();
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ================= 1. ADMIN LOGIN VIEW ================= -->
+  <div id="loginView" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg text-2xl transform rotate-3">
+          <i class="fas fa-shield-halved"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900">Kstore Database Manager</h2>
+        <p class="text-xs text-slate-500 mt-1">พื้นที่จัดการฐานข้อมูลสด &bull; สำหรับผู้ดูแลระบบ (Admin Only)</p>
+      </div>
+
+      <div id="loginError" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+        <i class="fas fa-exclamation-circle text-sm shrink-0"></i>
+        <span id="loginErrorMsg"></span>
+      </div>
+
+      <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อผู้ใช้งาน (Admin Username)</label>
+          <div class="relative">
+            <i class="fas fa-user absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="adminUser" required placeholder="เช่น admin" class="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+          <div class="relative">
+            <i class="fas fa-lock absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="password" id="adminPass" required placeholder="กรอกรหัสผ่าน Admin" class="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+          </div>
+        </div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
+          <i class="fas fa-sign-in-alt"></i> ยืนยันตัวตนเข้าสู่ระบบ
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
+        <i class="fas fa-lock mr-1"></i> เชื่อมต่อความปลอดภัยตรงกับ Firebase Cloud Firestore
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. MAIN APPLICATION VIEW ================= -->
+  <div id="appView" class="flex-1 flex flex-col hidden">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md">
+            <i class="fas fa-database"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-bold text-lg text-slate-900 leading-tight">Kstore Database Manager</h1>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                <i class="fas fa-user-shield mr-0.5"></i> ADMIN
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">จัดการข้อมูล Firebase สดๆ &bull; แก้ไข / ลบ / เพิ่มข้อมูลได้ง่ายเหมือน Google Sheets</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Admin User Profile Badge -->
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            <i class="fas fa-circle-user text-blue-600 text-sm"></i>
+            <span id="currentAdminName" class="font-bold text-slate-700">Admin</span>
+          </div>
+
+          <button onclick="refreshData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            <i class="fas fa-sync-alt" id="refreshIcon"></i> รีเฟรช
+          </button>
+          <button onclick="exportCurrentTableToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+            <i class="fas fa-file-excel"></i> ส่งออกตาราง (.xlsx)
+          </button>
+          <button onclick="exportAllToExcel()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+            <i class="fas fa-download"></i> โหลดทุกชีท (.xlsx)
+          </button>
+          <button onclick="handleAdminLogout()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition" title="ออกจากระบบ">
+            <i class="fas fa-power-off"></i> ออกจากระบบ
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-2 flex overflow-x-auto gap-2 text-sm border-t border-slate-100">
+        <button onclick="switchTab('materials')" class="tab-btn active px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" id="tab-materials">
+          <i class="fas fa-boxes"></i> รายการวัสดุ (Materials) <span id="count-materials" class="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="switchTab('withdraw_history')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-withdraw_history">
+          <i class="fas fa-arrow-circle-up text-rose-500"></i> ประวัติการเบิก (Withdraw) <span id="count-withdraw_history" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="switchTab('import_history')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-import_history">
+          <i class="fas fa-arrow-circle-down text-emerald-500"></i> ประวัติการนำเข้า (Import) <span id="count-import_history" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="switchTab('bom')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-bom">
+          <i class="fas fa-cubes text-amber-500"></i> สูตรการผลิต (BOM) <span id="count-bom" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="switchTab('users')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-users">
+          <i class="fas fa-users text-purple-500"></i> ผู้ใช้งาน (Users) <span id="count-users" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="switchTab('log')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-log">
+          <i class="fas fa-history text-slate-500"></i> ประวัติล็อกอิน (Log) <span id="count-log" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Controls Bar -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex-1 flex flex-col w-full">
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="relative flex-1 min-w-[240px]">
+          <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
+          <input type="text" id="searchInput" oninput="onSearch(this.value)" placeholder="พิมพ์ค้นหาในตารางนี้... (ค้นหาได้ทุกคอลัมน์)" class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="filteredCountText" class="text-xs text-slate-500">แสดง 0 รายการ</span>
+          <button onclick="openAddModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <i class="fas fa-plus"></i> เพิ่มแถวใหม่
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col relative min-h-[450px]">
+        <div id="loadingBox" class="absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center z-20">
+          <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-3 text-sm font-semibold text-slate-600">กำลังดึงข้อมูลสดจาก Firebase Firestore...</p>
+        </div>
+
+        <div class="overflow-x-auto flex-1">
+          <table class="w-full text-left text-xs text-slate-700" id="mainTable">
+            <thead class="bg-slate-800 text-white font-semibold sticky top-0 z-10 select-none" id="tableHeader">
+              <!-- Headers populated dynamically -->
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="tableBody">
+              <!-- Rows populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
+      Kstore Firebase Live Manager &bull; Real-time Connected to <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">kstore-e7f22</code>
+    </footer>
+  </div>
+
+  <!-- Edit / Add Modal -->
+  <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm" id="modalIcon">
+            <i class="fas fa-edit"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm" id="modalTitle">แก้ไขข้อมูล</h3>
+            <p class="text-[11px] text-slate-500" id="modalSubtitle">กำลังแก้ไขรายการใน Firestore</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="w-7 h-7 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-3.5 flex-1 text-xs" id="modalFields">
+        <!-- Fields generated dynamically -->
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition">ยกเลิก</button>
+        <button onclick="saveModalData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition" id="btnSaveModal">
+          <i class="fas fa-save"></i> บันทึกลง Firebase
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl shadow-lg text-white font-medium text-xs flex items-center gap-2"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCGoXviRd3Jbxpyd_JEU4kD2acHAIMlMV8",
+      authDomain: "kstore-e7f22.firebaseapp.com",
+      projectId: "kstore-e7f22",
+      storageBucket: "kstore-e7f22.firebasestorage.app",
+      messagingSenderId: "9565632832",
+      appId: "1:9565632832:web:6a5f010201a0d1c67362a5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Password MD5 Hash Helper (matching Kstore system)
+    function hashPassword(pass) {
+      if (!pass) return '';
+      if (typeof CryptoJS !== 'undefined') {
+        const raw = CryptoJS.MD5(String(pass).trim()).toString(CryptoJS.enc.Hex);
+        return "MD5_" + raw;
+      }
+      return String(pass).trim();
+    }
+
+    // --- AUTHENTICATION STATE & LOGIC ---
+    let currentAdminUser = null;
+
+    function checkAuthSession() {
+      try {
+        const saved = sessionStorage.getItem('kstore_db_manager_admin');
+        if (saved) {
+          const u = JSON.parse(saved);
+          if (u && String(u.role || '').toLowerCase() === 'admin') {
+            currentAdminUser = u;
+            showAppView();
+            return true;
+          }
+        }
+      } catch(e) {}
+      showLoginView();
+      return false;
+    }
+
+    function showLoginView() {
+      document.getElementById('loginView').classList.remove('hidden');
+      document.getElementById('appView').classList.add('hidden');
+      document.getElementById('adminUser').focus();
+    }
+
+    function showAppView() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+      if (currentAdminUser) {
+        document.getElementById('currentAdminName').innerText = `${currentAdminUser.fullname || currentAdminUser.username} (${currentAdminUser.role})`;
+      }
+      loadAllData();
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const errBox = document.getElementById('loginError');
+      const errMsg = document.getElementById('loginErrorMsg');
+      const btn = document.getElementById('btnLoginSubmit');
+      const originalHTML = btn.innerHTML;
+
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบสิทธิ์...';
+
+      const usernameInput = document.getElementById('adminUser').value.trim();
+      const passwordInput = document.getElementById('adminPass').value.trim();
+
+      try {
+        const uStr = usernameInput.toLowerCase();
+        const passHash = hashPassword(passwordInput);
+        const rawHash = (typeof CryptoJS !== 'undefined') ? CryptoJS.MD5(passwordInput).toString(CryptoJS.enc.Hex) : passwordInput;
+
+        const snap = await db.collection('users').get();
+        const userDoc = snap.docs.find(d => {
+          const u = d.data();
+          const dbU = String(u.username || '').trim().toLowerCase();
+          const dbP = String(u.password || '');
+          return dbU === uStr && (dbP === passHash || dbP === rawHash || dbP === passwordInput);
+        });
+
+        if (!userDoc) {
+          throw new Error('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
+        }
+
+        const userData = userDoc.data();
+        if (String(userData.role || '').toLowerCase() !== 'admin') {
+          throw new Error('ขออภัย เฉพาะผู้ใช้งานระดับผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเข้าถึงได้');
+        }
+
+        if (userData.status && userData.status !== 'approved') {
+          throw new Error('บัญชีของคุณยังไม่ได้รับการอนุมัติ (Status: ' + userData.status + ')');
+        }
+
+        // Save Admin session
+        currentAdminUser = {
+          user_id: userDoc.id,
+          username: userData.username,
+          fullname: userData.fullname || userData.username,
+          role: userData.role
+        };
+        sessionStorage.setItem('kstore_db_manager_admin', JSON.stringify(currentAdminUser));
+
+        showToast(`ยินดีต้อนรับคุณ ${currentAdminUser.fullname} (Admin)`, 'success');
+        showAppView();
+      } catch (err) {
+        errMsg.innerText = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    }
+
+    function handleAdminLogout() {
+      if (!confirm('ยืนยันออกจากระบบจัดการฐานข้อมูล?')) return;
+      sessionStorage.removeItem('kstore_db_manager_admin');
+      currentAdminUser = null;
+      document.getElementById('adminPass').value = '';
+      showToast('ออกจากระบบเรียบร้อยแล้ว', 'success');
+      showLoginView();
+    }
+
+    // --- TABLE CONFIGURATIONS ---
+    const TABLE_CONFIGS = {
+      materials: {
+        title: "Materials",
+        idKey: "material_id",
+        columns: [
+          { key: "material_id", label: "รหัสวัสดุ", readonly: true },
+          { key: "name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "ยอดคงเหลือ", type: "number", align: "right", format: v => `<span class="font-bold text-sm ${(parseFloat(v)||0) > 0 ? 'text-blue-600' : 'text-slate-400'}">${parseFloat(v)||0}</span>` },
+          { key: "units", label: "หน่วย" },
+          { key: "price", label: "ราคา", type: "number", align: "right" },
+          { key: "category", label: "หมวดหมู่" },
+          { key: "location", label: "สถานที่จัดเก็บ" },
+          { key: "type", label: "ประเภทชุดตรวจ", format: v => Array.isArray(v) ? v.join(', ') : (v||'') },
+          { key: "last_import_date", label: "นำเข้าล่าสุด", format: formatDate },
+          { key: "last_withdraw_date", label: "เบิกล่าสุด", format: formatDate },
+          { key: "image_url", label: "รูปภาพ", format: v => v ? `<a href="${v}" target="_blank" class="text-blue-600 underline hover:text-blue-800"><i class="fas fa-image mr-1"></i> ดูรูป</a>` : '-' }
+        ]
+      },
+      withdraw_history: {
+        title: "Withdraw_History",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาที่เบิก", format: formatDate },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "material_name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "จำนวนที่เบิก", type: "number", align: "right", format: v => `<span class="font-bold text-rose-600">-${v}</span>` },
+          { key: "user_name", label: "ผู้ทำรายการ" },
+          { key: "ref_doc", label: "เอกสารอ้างอิง" },
+          { key: "type", label: "ประเภท" }
+        ]
+      },
+      import_history: {
+        title: "Import_History",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาที่นำเข้า", format: formatDate },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "material_name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "จำนวนที่นำเข้า", type: "number", align: "right", format: v => `<span class="font-bold text-emerald-600">+${v}</span>` },
+          { key: "user_name", label: "ผู้ทำรายการ" },
+          { key: "ref_doc", label: "เอกสารอ้างอิง" },
+          { key: "type", label: "ประเภท" }
+        ]
+      },
+      bom: {
+        title: "BOM",
+        columns: [
+          { key: "type", label: "ประเภทชุดตรวจ" },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "req_qty", label: "จำนวนต่อชุด", type: "number", align: "right", format: v => `<span class="font-semibold text-slate-800">${v}</span>` }
+        ]
+      },
+      users: {
+        title: "Users",
+        idKey: "user_id",
+        columns: [
+          { key: "user_id", label: "User ID", readonly: true },
+          { key: "username", label: "ชื่อผู้ใช้ (Username)", format: v => `<span class="font-mono font-bold text-indigo-700">${v}</span>` },
+          { key: "fullname", label: "ชื่อ-นามสกุล" },
+          { key: "group", label: "กลุ่มงาน" },
+          { key: "role", label: "ระดับ (admin/user)", format: v => `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${v==='admin' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}">${v}</span>` },
+          { key: "status", label: "สถานะ (approved/pending)", format: v => `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${v==='approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${v}</span>` },
+          { key: "permissions", label: "สิทธิ์การใช้งาน", format: v => Array.isArray(v) ? v.join(', ') : (v||'') }
+        ]
+      },
+      log: {
+        title: "Log",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาที่เข้าใช้งาน", format: formatDate },
+          { key: "user_id", label: "User ID" },
+          { key: "username", label: "ชื่อผู้ใช้" },
+          { key: "fullname", label: "ชื่อ-นามสกุล" },
+          { key: "role", label: "ระดับ" }
+        ]
+      }
+    };
+
+    let currentTab = 'materials';
+    let databaseData = {};
+    let currentFilterText = '';
+    let editingDocId = null;
+    let isAddMode = false;
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.className = `fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl shadow-lg text-white font-medium text-xs flex items-center gap-2 toast ${type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`;
+      toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${msg}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    function formatDate(val) {
+      if (!val) return '-';
+      try {
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return val;
+        return d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+      } catch(e) { return val; }
+    }
+
+    async function loadAllData() {
+      document.getElementById('loadingBox').classList.remove('hidden');
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('fa-spin');
+
+      try {
+        const collections = ['materials', 'withdraw_history', 'import_history', 'bom', 'users', 'log'];
+        const promises = collections.map(c => db.collection(c).get());
+        const snaps = await Promise.all(promises);
+
+        collections.forEach((c, idx) => {
+          const docs = snaps[idx].docs.map(d => ({ _docId: d.id, ...d.data() }));
+          if (c === 'withdraw_history' || c === 'import_history' || c === 'log') {
+            docs.sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+          }
+          databaseData[c] = docs;
+          const badge = document.getElementById(`count-${c}`);
+          if (badge) badge.innerText = docs.length;
+        });
+
+        renderCurrentTable();
+      } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + err.message, 'error');
+      } finally {
+        document.getElementById('loadingBox').classList.add('hidden');
+        if (icon) icon.classList.remove('fa-spin');
+      }
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-blue-600', 'text-white');
+        btn.classList.add('text-slate-600');
+      });
+      const activeBtn = document.getElementById(`tab-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-slate-600');
+      }
+      document.getElementById('searchInput').value = '';
+      currentFilterText = '';
+      renderCurrentTable();
+    }
+
+    function renderCurrentTable() {
+      const cfg = TABLE_CONFIGS[currentTab];
+      const list = databaseData[currentTab] || [];
+      const thead = document.getElementById('tableHeader');
+      const tbody = document.getElementById('tableBody');
+
+      // Render Header
+      thead.innerHTML = `
+        <tr>
+          <th class="p-3 pl-4 w-12 text-center text-slate-400 border-b border-slate-700">#</th>
+          ${cfg.columns.map(c => `<th class="p-3 border-b border-slate-700 ${c.align === 'right' ? 'text-right' : 'text-left'}">${c.label}</th>`).join('')}
+          <th class="p-3 pr-4 text-center border-b border-slate-700 w-28">จัดการ (Action)</th>
+        </tr>
+      `;
+
+      // Filter rows
+      let filtered = list;
+      if (currentFilterText) {
+        const q = currentFilterText.toLowerCase();
+        filtered = list.filter(row => {
+          return Object.values(row).some(v => String(v||'').toLowerCase().includes(q));
+        });
+      }
+
+      document.getElementById('filteredCountText').innerText = `แสดง ${filtered.length} จากทั้งหมด ${list.length} แถว`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${cfg.columns.length + 2}" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+        return;
+      }
+
+      // Render Rows
+      tbody.innerHTML = filtered.map((row, rIdx) => {
+        const docId = row._docId;
+        return `
+          <tr class="hover:bg-blue-50/50 transition">
+            <td class="p-3 pl-4 text-center text-slate-400 font-mono text-[11px]">${rIdx + 1}</td>
+            ${cfg.columns.map(col => {
+              const val = row[col.key];
+              const displayVal = col.format ? col.format(val, row) : (val !== undefined && val !== null ? val : '-');
+              return `<td class="p-3 ${col.align === 'right' ? 'text-right' : 'text-left'}">${displayVal}</td>`;
+            }).join('')}
+            <td class="p-3 pr-4 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="openEditModal('${docId}')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md text-[11px] font-bold transition flex items-center gap-1">
+                  <i class="fas fa-edit"></i> แก้ไข
+                </button>
+                <button onclick="deleteRow('${docId}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md text-[11px] font-bold transition flex items-center gap-1">
+                  <i class="fas fa-trash-alt"></i> ลบ
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function onSearch(val) {
+      currentFilterText = val.trim();
+      renderCurrentTable();
+    }
+
+    function refreshData() {
+      loadAllData();
+    }
+
+    // --- EDIT / ADD MODAL ---
+    function openEditModal(docId) {
+      isAddMode = false;
+      editingDocId = docId;
+      const cfg = TABLE_CONFIGS[currentTab];
+      const row = (databaseData[currentTab] || []).find(r => r._docId === docId);
+      if (!row) return;
+
+      document.getElementById('modalTitle').innerText = `แก้ไขรายการ (${cfg.title})`;
+      document.getElementById('modalSubtitle').innerText = `Document ID: ${docId}`;
+      document.getElementById('modalIcon').className = 'w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm';
+      document.getElementById('modalIcon').innerHTML = '<i class="fas fa-edit"></i>';
+
+      const fieldsContainer = document.getElementById('modalFields');
+      fieldsContainer.innerHTML = cfg.columns.map(col => {
+        let val = row[col.key];
+        if (Array.isArray(val)) val = val.join(', ');
+        if (val === undefined || val === null) val = '';
+
+        return `
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">${col.label} <span class="text-slate-400 font-normal">(${col.key})</span></label>
+            <input type="${col.type === 'number' ? 'number' : 'text'}" 
+                   id="field_${col.key}" 
+                   value="${String(val).replace(/"/g, '&quot;')}" 
+                   ${col.readonly ? 'disabled class="bg-slate-100 text-slate-400 cursor-not-allowed"' : ''}
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500 transition">
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function openAddModal() {
+      isAddMode = true;
+      editingDocId = null;
+      const cfg = TABLE_CONFIGS[currentTab];
+
+      document.getElementById('modalTitle').innerText = `เพิ่มรายการใหม่ (${cfg.title})`;
+      document.getElementById('modalSubtitle').innerText = `สร้าง Document ใหม่ลงใน Firebase Collection: ${currentTab}`;
+      document.getElementById('modalIcon').className = 'w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-sm';
+      document.getElementById('modalIcon').innerHTML = '<i class="fas fa-plus"></i>';
+
+      const fieldsContainer = document.getElementById('modalFields');
+      fieldsContainer.innerHTML = cfg.columns.map(col => {
+        let defaultVal = '';
+        if (col.key === 'material_id') defaultVal = 'M' + Date.now();
+        if (col.key === 'user_id') defaultVal = 'U' + Date.now();
+        if (col.key === 'timestamp') defaultVal = new Date().toISOString();
+        if (col.key === 'qty' || col.key === 'price' || col.key === 'req_qty') defaultVal = '0';
+
+        return `
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">${col.label} <span class="text-slate-400 font-normal">(${col.key})</span></label>
+            <input type="${col.type === 'number' ? 'number' : 'text'}" 
+                   id="field_${col.key}" 
+                   value="${defaultVal}" 
+                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition">
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('editModal').classList.add('hidden');
+      editingDocId = null;
+    }
+
+    async function saveModalData() {
+      const btn = document.getElementById('btnSaveModal');
+      const originalHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+
+      try {
+        const cfg = TABLE_CONFIGS[currentTab];
+        const updateData = {};
+
+        cfg.columns.forEach(col => {
+          const input = document.getElementById(`field_${col.key}`);
+          if (!input) return;
+          let val = input.value.trim();
+
+          if (col.type === 'number') {
+            updateData[col.key] = parseFloat(val) || 0;
+          } else if (col.key === 'type' && currentTab === 'materials') {
+            updateData[col.key] = val ? val.split(',').map(s => s.trim()).filter(Boolean) : [];
+          } else if (col.key === 'permissions' && currentTab === 'users') {
+            updateData[col.key] = val ? val.split(',').map(s => s.trim()).filter(Boolean) : [];
+          } else {
+            updateData[col.key] = val;
+          }
+        });
+
+        updateData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+
+        if (isAddMode) {
+          let customId = null;
+          if (cfg.idKey && updateData[cfg.idKey]) {
+            customId = String(updateData[cfg.idKey]).trim();
+          }
+          if (customId) {
+            await db.collection(currentTab).doc(customId).set(updateData);
+          } else {
+            await db.collection(currentTab).add(updateData);
+          }
+          showToast('เพิ่มรายการใหม่สำเร็จ!', 'success');
+        } else {
+          await db.collection(currentTab).doc(editingDocId).set(updateData, { merge: true });
+          showToast('บันทึกการแก้ไขข้อมูลสำเร็จ!', 'success');
+        }
+
+        closeModal();
+        await loadAllData();
+      } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการบันทึก: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    }
+
+    // --- DELETE ROW ---
+    async function deleteRow(docId) {
+      if (!confirm(`ยืนยันการลบรายการ ID "${docId}" ออกจากฐานข้อมูล Firebase?\n(การลบนี้จะถูกลบจริงทันที)`)) {
+        return;
+      }
+
+      try {
+        document.getElementById('loadingBox').classList.remove('hidden');
+        await db.collection(currentTab).doc(docId).delete();
+        showToast(`ลบรายการ ${docId} เรียบร้อยแล้ว`, 'success');
+        await loadAllData();
+      } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการลบ: ' + err.message, 'error');
+        document.getElementById('loadingBox').classList.add('hidden');
+      }
+    }
+
+    // --- EXPORT TO EXCEL ---
+    function exportCurrentTableToExcel() {
+      const cfg = TABLE_CONFIGS[currentTab];
+      const list = databaseData[currentTab] || [];
+      if (!list.length) return alert('ไม่มีข้อมูลในตารางนี้');
+
+      const rows = list.map(row => {
+        const obj = {};
+        cfg.columns.forEach(col => {
+          let v = row[col.key];
+          if (Array.isArray(v)) v = v.join(', ');
+          obj[col.label] = v !== undefined && v !== null ? v : '';
+        });
+        return obj;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, cfg.title);
+      XLSX.writeFile(wb, `Kstore_${cfg.title}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function exportAllToExcel() {
+      const wb = XLSX.utils.book_new();
+      Object.keys(TABLE_CONFIGS).forEach(tKey => {
+        const cfg = TABLE_CONFIGS[tKey];
+        const list = databaseData[tKey] || [];
+        const rows = list.map(row => {
+          const obj = {};
+          cfg.columns.forEach(col => {
+            let v = row[col.key];
+            if (Array.isArray(v)) v = v.join(', ');
+            obj[col.label] = v !== undefined && v !== null ? v : '';
+          });
+          return obj;
+        });
+        const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ "หมายเหตุ": "ไม่มีข้อมูล" }]);
+        XLSX.utils.book_append_sheet(wb, ws, cfg.title);
+      });
+      XLSX.writeFile(wb, `Kstore_Full_Database_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // Start by checking authentication
+    window.onload = checkAuthSession;
+  </script>
+</body>
+</html>
