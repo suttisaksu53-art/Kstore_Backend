@@ -317,6 +317,7 @@
       <div id="dashboardSection" class="space-y-4">
         
         <!-- Top Metrics Cards -->
+        <!-- Top Metrics Cards (4 Columns) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           <!-- Card 1: Storage Limit Quota -->
@@ -331,82 +332,117 @@
                 <span class="text-xs font-bold text-slate-400">/ 1,024 MB (1 GB)</span>
               </div>
               <!-- Progress Bar -->
-              <div class="w-full bg-slate-100 rounded-full h-2.5 mt-3 overflow-hidden">
-                <div id="dashStorageBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0.1%"></div>
+              <div class="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+                <div id="dashStorageBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 0.1%"></div>
               </div>
             </div>
             <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500">โควตาฟรี (Spark Plan)</span>
+              <span class="text-slate-500">เหลืออีก: <b id="dashStorageRemaining" class="text-slate-700">1,024 MB</b></span>
               <span id="dashStoragePercent" class="font-extrabold text-blue-600">0.00%</span>
             </div>
           </div>
 
-          <!-- Card 2: Total Documents -->
+          <!-- Card 2: Daily Reads Quota -->
           <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">จำนวนเอกสารสะสม</span>
-                <span class="p-2 rounded-xl bg-purple-50 text-purple-600 text-sm"><i class="fas fa-layer-group"></i></span>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">โควตาอ่านวันนี้ (Daily Reads)</span>
+                <span class="p-2 rounded-xl bg-sky-50 text-sky-600 text-sm"><i class="fas fa-eye"></i></span>
               </div>
               <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-2xl font-black text-slate-900" id="dashTotalDocs">0</span>
-                <span class="text-xs font-bold text-slate-400">แถว / Documents</span>
+                <span class="text-2xl font-black text-slate-900" id="dashDailyReadsUsedText">0 ครั้ง</span>
+                <span class="text-xs font-bold text-slate-400">/ 50,000 ต่อวัน</span>
               </div>
-              <p class="text-[11px] text-slate-500 mt-2">กระจายอยู่ใน 6 Collections หลักของระบบ</p>
-            </div>
-            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500">สถานะข้อมูล</span>
-              <span class="font-bold text-emerald-600"><i class="fas fa-check-circle mr-1"></i> โครงสร้างสมบูรณ์</span>
-            </div>
-          </div>
-
-          <!-- Card 3: Daily Quota Estimation -->
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">โควตาฟรีรายวัน (Daily Limit)</span>
-                <span class="p-2 rounded-xl bg-amber-50 text-amber-600 text-sm"><i class="fas fa-bolt"></i></span>
-              </div>
-              <div class="mt-2 text-xs space-y-1.5">
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500 font-medium">Reads:</span>
-                  <span class="font-bold text-slate-700">ฟรี 50,000 / วัน</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500 font-medium">Writes:</span>
-                  <span class="font-bold text-slate-700">ฟรี 20,000 / วัน</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500 font-medium">Deletes:</span>
-                  <span class="font-bold text-slate-700">ฟรี 20,000 / วัน</span>
-                </div>
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+                <div id="dashDailyReadsBar" class="bg-sky-500 h-2 rounded-full transition-all duration-500" style="width: 0.1%"></div>
               </div>
             </div>
             <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500">การใช้งานวันนี้</span>
-              <span class="font-bold text-emerald-600"><i class="fas fa-shield-alt mr-1"></i> ปลอดภัยสูงมาก</span>
+              <span class="text-slate-500">เหลืออ่านอีก: <b id="dashDailyReadsRemaining" class="text-slate-700">50,000 ครั้ง</b></span>
+              <span id="dashDailyReadsPercent" class="font-extrabold text-sky-600">0.00%</span>
             </div>
           </div>
 
-          <!-- Card 4: System Health & Density -->
+          <!-- Card 3: Daily Writes Quota -->
           <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">สุขภาพฐานข้อมูล (Health)</span>
-                <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm"><i class="fas fa-heart-pulse"></i></span>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">โควตาเขียนวันนี้ (Daily Writes)</span>
+                <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm"><i class="fas fa-pen-to-square"></i></span>
               </div>
               <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-2xl font-black text-emerald-600">100%</span>
-                <span class="text-xs font-bold text-slate-400">Excellent</span>
+                <span class="text-2xl font-black text-slate-900" id="dashDailyWritesUsedText">0 ครั้ง</span>
+                <span class="text-xs font-bold text-slate-400">/ 20,000 ต่อวัน</span>
               </div>
-              <p class="text-[11px] text-slate-500 mt-2" id="dashDensityDesc">ความหนาแน่นการใช้งาน: สภาพคล่องสูง ตอบสนองทันที</p>
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+                <div id="dashDailyWritesBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0.1%"></div>
+              </div>
             </div>
             <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500">เวลาตอบสนอง DB:</span>
-              <span id="dashLatency" class="font-bold text-blue-600 font-mono">~35ms</span>
+              <span class="text-slate-500">เหลือเขียนอีก: <b id="dashDailyWritesRemaining" class="text-slate-700">20,000 ครั้ง</b></span>
+              <span id="dashDailyWritesPercent" class="font-extrabold text-emerald-600">0.00%</span>
             </div>
           </div>
 
+          <!-- Card 4: Daily Bandwidth (Network Egress) -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">แบนด์วิดท์รับส่ง (Bandwidth Egress)</span>
+                <span class="p-2 rounded-xl bg-purple-50 text-purple-600 text-sm"><i class="fas fa-network-wired"></i></span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-black text-slate-900" id="dashBandwidthUsedText">0.00 MB</span>
+                <span class="text-xs font-bold text-slate-400">/ 340 MB ต่อวัน</span>
+              </div>
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+                <div id="dashBandwidthBar" class="bg-purple-600 h-2 rounded-full transition-all duration-500" style="width: 0.1%"></div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">เหลือแบนด์วิดท์: <b id="dashBandwidthRemaining" class="text-slate-700">340 MB</b></span>
+              <span id="dashBandwidthPercent" class="font-extrabold text-purple-600">0.00%</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Density & Activity Intensity Panel -->
+        <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col lg:flex-row items-center justify-between gap-4 border border-slate-800">
+          <div class="flex items-center gap-4 w-full lg:w-auto">
+            <div class="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+              <i class="fas fa-gauge-high"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="font-extrabold text-sm sm:text-base tracking-tight text-white">ความหนาแน่นของการใช้งานระบบ (Usage Density)</h3>
+                <span id="dashDensityBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> เบาบาง / คล่องตัวสูง
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5" id="dashDensitySummary">
+                วันนี้มีธุรกรรมรวม 0 รายการ &bull; อัตราการใช้โควตาเฉลี่ยต่ำกว่า 1% ฐานข้อมูลปลอดภัยสูงมาก
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center flex-wrap gap-2 sm:gap-3 w-full lg:w-auto justify-start lg:justify-end text-xs">
+            <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">
+              <span class="text-slate-400 text-[11px]">ธุรกรรมวันนี้:</span>
+              <span id="dashTodayTxTotal" class="font-bold text-emerald-400">0 รายการ</span>
+            </div>
+            <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">
+              <span class="text-slate-400 text-[11px]">โควตาลบ (Deletes):</span>
+              <span id="dashDailyDeletesText" class="font-bold text-rose-400">0 / 20,000</span>
+            </div>
+            <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">
+              <span class="text-slate-400 text-[11px]">DB Latency:</span>
+              <span id="dashLatency" class="font-bold text-sky-400 font-mono">~35ms</span>
+            </div>
+          </div>
         </div>
 
         <!-- Charts Section (2 Columns) -->
@@ -733,6 +769,7 @@
     let tableSortColumn = null;
     let tableSortAsc = false;
     let selectedDocIds = new Set();
+    let currentFilteredRows = [];
     let editingDocId = null;
     let isAddMode = false;
 
@@ -909,6 +946,72 @@
       return bytes;
     }
 
+    // ==========================================
+    // 📊 QUOTA TRACKING & STORAGE ENGINE
+    // ==========================================
+    const FIRESTORE_QUOTAS = {
+      storageMb: 1024,      // 1 GiB (1,024 MB) free Spark tier
+      dailyReads: 50000,    // 50,000 document reads / day
+      dailyWrites: 20000,   // 20,000 document writes / day
+      dailyDeletes: 20000,  // 20,000 document deletes / day
+      dailyBandwidthMb: 340 // 10 GiB / month ≈ 340 MB / day
+    };
+
+    function getTodayKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `kstore_quota_${y}-${m}-${d}`;
+    }
+
+    function getDailyMetrics() {
+      try {
+        const key = getTodayKey();
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            reads: parsed.reads || 0,
+            writes: parsed.writes || 0,
+            deletes: parsed.deletes || 0,
+            bandwidthBytes: parsed.bandwidthBytes || 0,
+            transactions: parsed.transactions || 0
+          };
+        }
+      } catch (e) {
+        console.error('Error reading daily metrics', e);
+      }
+      return {
+        reads: 0,
+        writes: 0,
+        deletes: 0,
+        bandwidthBytes: 0,
+        transactions: 0
+      };
+    }
+
+    function recordQuotaOp(type, count = 1, bytes = 0) {
+      try {
+        const key = getTodayKey();
+        const metrics = getDailyMetrics();
+        if (type === 'reads') {
+          metrics.reads += count;
+          metrics.bandwidthBytes += bytes > 0 ? bytes : (count * 450);
+        } else if (type === 'writes') {
+          metrics.writes += count;
+          metrics.bandwidthBytes += bytes > 0 ? bytes : (count * 750);
+        } else if (type === 'deletes') {
+          metrics.deletes += count;
+          metrics.bandwidthBytes += bytes > 0 ? bytes : (count * 200);
+        }
+        metrics.transactions += count;
+        localStorage.setItem(key, JSON.stringify(metrics));
+      } catch (e) {
+        console.error('Error recording quota op', e);
+      }
+    }
+
     // --- LOAD ALL DATA FROM FIRESTORE ---
     async function loadAllData() {
       const loadingBox = document.getElementById('loadingBox');
@@ -921,12 +1024,22 @@
         const collections = ['materials', 'withdraw_history', 'import_history', 'bom', 'users', 'log'];
         const snaps = await Promise.all(collections.map(c => db.collection(c).get()));
 
+        let totalLoadedReads = 0;
+        let totalLoadedBytes = 0;
+
         collections.forEach((c, idx) => {
           const docs = snaps[idx].docs.map(d => ({ _docId: d.id, ...d.data() }));
           databaseData[c] = docs;
+          totalLoadedReads += docs.length;
+          docs.forEach(d => {
+            totalLoadedBytes += (estimateDocSize(d) + 150);
+          });
           const badge = document.getElementById(`count-${c}`);
           if (badge) badge.innerText = docs.length;
         });
+
+        // Record Quota Op for loaded reads and egress
+        recordQuotaOp('reads', totalLoadedReads, totalLoadedBytes);
 
         const elapsed = (performance.now() - startMs).toFixed(0);
         const latEl = document.getElementById('dashLatency');
@@ -1007,27 +1120,139 @@
         };
       });
 
-      // Update Top Cards
-      const totalDocsEl = document.getElementById('dashTotalDocs');
-      if (totalDocsEl) totalDocsEl.innerText = totalDocs.toLocaleString();
-
+      // 1. Storage Metric (Firestore Stored Data: 1,024 MB Limit)
       const usedKb = totalBytes / 1024;
       const usedMb = usedKb / 1024;
-      const freeTierMb = 1024; // 1 GB free on Firebase Spark
-      const percent = (usedMb / freeTierMb) * 100;
+      const freeTierMb = FIRESTORE_QUOTAS.storageMb; // 1024 MB
+      const storagePercent = (usedMb / freeTierMb) * 100;
+      const remainingStorageMb = Math.max(0, freeTierMb - usedMb);
 
       const storageText = usedMb >= 1 ? `${usedMb.toFixed(2)} MB` : `${usedKb.toFixed(2)} KB`;
       const storageTextEl = document.getElementById('dashStorageUsedText');
       if (storageTextEl) storageTextEl.innerText = storageText;
 
-      const percentText = percent < 0.01 ? '< 0.01%' : `${percent.toFixed(2)}%`;
-      const percentEl = document.getElementById('dashStoragePercent');
-      if (percentEl) percentEl.innerText = `${percentText} ของโควตาฟรี`;
+      const storageRemEl = document.getElementById('dashStorageRemaining');
+      if (storageRemEl) storageRemEl.innerText = remainingStorageMb >= 1000 ? `${(remainingStorageMb/1024).toFixed(2)} GB` : `${remainingStorageMb.toFixed(1)} MB`;
 
-      const barEl = document.getElementById('dashStorageBar');
-      if (barEl) {
-        const visualWidth = Math.max(percent * 4, 1); // visually visible bar
-        barEl.style.width = `${Math.min(visualWidth, 100)}%`;
+      const storagePercentEl = document.getElementById('dashStoragePercent');
+      if (storagePercentEl) {
+        const pctStr = storagePercent < 0.01 ? '< 0.01%' : `${storagePercent.toFixed(2)}%`;
+        storagePercentEl.innerText = `${pctStr}`;
+      }
+
+      const storageBarEl = document.getElementById('dashStorageBar');
+      if (storageBarEl) {
+        const visualWidth = Math.max(storagePercent * 3, 0.8);
+        storageBarEl.style.width = `${Math.min(visualWidth, 100)}%`;
+      }
+
+      // 2. Daily Reads Metric (50,000 / day)
+      const metrics = getDailyMetrics();
+      const readsLimit = FIRESTORE_QUOTAS.dailyReads;
+      const readsUsed = metrics.reads;
+      const readsRemaining = Math.max(0, readsLimit - readsUsed);
+      const readsPercent = (readsUsed / readsLimit) * 100;
+
+      const readsUsedEl = document.getElementById('dashDailyReadsUsedText');
+      if (readsUsedEl) readsUsedEl.innerText = `${readsUsed.toLocaleString()} ครั้ง`;
+
+      const readsRemEl = document.getElementById('dashDailyReadsRemaining');
+      if (readsRemEl) readsRemEl.innerText = `${readsRemaining.toLocaleString()} ครั้ง`;
+
+      const readsPercentEl = document.getElementById('dashDailyReadsPercent');
+      if (readsPercentEl) {
+        const pctStr = readsPercent < 0.01 && readsUsed > 0 ? '< 0.01%' : `${readsPercent.toFixed(2)}%`;
+        readsPercentEl.innerText = pctStr;
+      }
+
+      const readsBarEl = document.getElementById('dashDailyReadsBar');
+      if (readsBarEl) {
+        const visualReads = readsUsed > 0 ? Math.max(readsPercent, 0.8) : 0;
+        readsBarEl.style.width = `${Math.min(visualReads, 100)}%`;
+      }
+
+      // 3. Daily Writes Metric (20,000 / day)
+      const writesLimit = FIRESTORE_QUOTAS.dailyWrites;
+      const writesUsed = metrics.writes;
+      const writesRemaining = Math.max(0, writesLimit - writesUsed);
+      const writesPercent = (writesUsed / writesLimit) * 100;
+
+      const writesUsedEl = document.getElementById('dashDailyWritesUsedText');
+      if (writesUsedEl) writesUsedEl.innerText = `${writesUsed.toLocaleString()} ครั้ง`;
+
+      const writesRemEl = document.getElementById('dashDailyWritesRemaining');
+      if (writesRemEl) writesRemEl.innerText = `${writesRemaining.toLocaleString()} ครั้ง`;
+
+      const writesPercentEl = document.getElementById('dashDailyWritesPercent');
+      if (writesPercentEl) {
+        const pctStr = writesPercent < 0.01 && writesUsed > 0 ? '< 0.01%' : `${writesPercent.toFixed(2)}%`;
+        writesPercentEl.innerText = pctStr;
+      }
+
+      const writesBarEl = document.getElementById('dashDailyWritesBar');
+      if (writesBarEl) {
+        const visualWrites = writesUsed > 0 ? Math.max(writesPercent, 0.8) : 0;
+        writesBarEl.style.width = `${Math.min(visualWrites, 100)}%`;
+      }
+
+      // 4. Daily Bandwidth Egress (340 MB / day ≈ 10 GB / month)
+      const bandwidthLimitMb = FIRESTORE_QUOTAS.dailyBandwidthMb;
+      const bandwidthUsedKb = metrics.bandwidthBytes / 1024;
+      const bandwidthUsedMb = bandwidthUsedKb / 1024;
+      const bandwidthRemainingMb = Math.max(0, bandwidthLimitMb - bandwidthUsedMb);
+      const bandwidthPercent = (bandwidthUsedMb / bandwidthLimitMb) * 100;
+
+      const bwUsedEl = document.getElementById('dashBandwidthUsedText');
+      if (bwUsedEl) {
+        bwUsedEl.innerText = bandwidthUsedMb >= 1 ? `${bandwidthUsedMb.toFixed(2)} MB` : `${bandwidthUsedKb.toFixed(1)} KB`;
+      }
+
+      const bwRemEl = document.getElementById('dashBandwidthRemaining');
+      if (bwRemEl) bwRemEl.innerText = `${bandwidthRemainingMb.toFixed(1)} MB`;
+
+      const bwPercentEl = document.getElementById('dashBandwidthPercent');
+      if (bwPercentEl) {
+        const pctStr = bandwidthPercent < 0.01 && bandwidthUsedMb > 0 ? '< 0.01%' : `${bandwidthPercent.toFixed(2)}%`;
+        bwPercentEl.innerText = pctStr;
+      }
+
+      const bwBarEl = document.getElementById('dashBandwidthBar');
+      if (bwBarEl) {
+        const visualBw = bandwidthUsedMb > 0 ? Math.max(bandwidthPercent, 0.8) : 0;
+        bwBarEl.style.width = `${Math.min(visualBw, 100)}%`;
+      }
+
+      // 5. Activity & Usage Density Panel
+      const todayTxEl = document.getElementById('dashTodayTxTotal');
+      if (todayTxEl) todayTxEl.innerText = `${metrics.transactions.toLocaleString()} รายการ`;
+
+      const deletesLimit = FIRESTORE_QUOTAS.dailyDeletes;
+      const deletesEl = document.getElementById('dashDailyDeletesText');
+      if (deletesEl) deletesEl.innerText = `${metrics.deletes.toLocaleString()} / ${deletesLimit.toLocaleString()}`;
+
+      // Max load factor among all metrics
+      const maxRatio = Math.max(readsPercent, writesPercent, (metrics.deletes / deletesLimit) * 100, bandwidthPercent);
+      const badgeEl = document.getElementById('dashDensityBadge');
+      const summaryEl = document.getElementById('dashDensitySummary');
+
+      if (badgeEl && summaryEl) {
+        if (maxRatio < 15) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1';
+          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> เบาบาง / คล่องตัวสูง';
+          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงสุด <b>${maxRatio < 0.1 ? '< 0.1%' : maxRatio.toFixed(1) + '%'}</b> ฐานข้อมูลปลอดภัยและตอบสนองฉับไว`;
+        } else if (maxRatio < 50) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center gap-1';
+          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> ปานกลาง / ใช้งานปกติ';
+          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงสุด <b>${maxRatio.toFixed(1)}%</b> การใช้งานปกติ มีความเสถียรภาพ`;
+        } else if (maxRatio < 80) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1';
+          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> ค่อนข้างหนาแน่น / ควรเฝ้าระวัง';
+          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; ใช้อัตราโควตาไปแล้ว <b>${maxRatio.toFixed(1)}%</b> แนะนำหลีกเลี่ยงการ Refresh หรือ Import บ่อยเกินจำเป็น`;
+        } else {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1';
+          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> หนาแน่นวิกฤต / ใกล้เต็มโควตา';
+          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงถึง <b>${maxRatio.toFixed(1)}%</b> ใกล้ขีดจำกัดรายวันของ Firestore Spark Plan`;
+        }
       }
 
       // Populate Table Body in Dashboard
@@ -1208,32 +1433,7 @@
       const thead = document.getElementById('tableHeader');
       const tbody = document.getElementById('tableBody');
 
-      // 1. Render Header with Select All Checkbox & Sortable Click Handlers
-      const allSelected = list.length > 0 && list.every(r => selectedDocIds.has(r._docId));
-
-      thead.innerHTML = `
-        <tr>
-          <th class="p-3 pl-4 w-10 text-center border-b border-slate-700">
-            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" ${allSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
-          </th>
-          <th class="p-3 w-12 text-center text-slate-400 border-b border-slate-700">#</th>
-          ${cfg.columns.map(c => {
-            const isSorted = tableSortColumn === c.key;
-            const arrow = isSorted ? (tableSortAsc ? '▲' : '▼') : '';
-            return `
-              <th onclick="toggleSortColumn('${c.key}')" class="p-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700/60 transition ${c.align === 'right' ? 'text-right' : 'text-left'}">
-                <span class="inline-flex items-center gap-1.5">
-                  ${c.label}
-                  <span class="text-[10px] text-blue-400 font-mono">${arrow}</span>
-                </span>
-              </th>
-            `;
-          }).join('')}
-          <th class="p-3 pr-4 text-center border-b border-slate-700 w-28">จัดการ (Action)</th>
-        </tr>
-      `;
-
-      // 2. Filter Rows
+      // 1. Filter Rows First
       let filtered = [...list];
       if (currentFilterText) {
         const q = currentFilterText.toLowerCase();
@@ -1245,8 +1445,9 @@
           });
         });
       }
+      currentFilteredRows = filtered;
 
-      // 3. Sort Rows
+      // 2. Sort Rows
       if (tableSortColumn) {
         filtered.sort((a, b) => {
           let vA = a[tableSortColumn];
@@ -1275,6 +1476,42 @@
         }
       }
 
+      // Check if all filtered rows are selected
+      const hasFiltered = filtered.length > 0;
+      const allSelected = hasFiltered && filtered.every(r => selectedDocIds.has(r._docId));
+      const someSelected = hasFiltered && !allSelected && filtered.some(r => selectedDocIds.has(r._docId));
+      const selectAllTitle = currentFilterText 
+        ? `เลือกทั้งหมดเฉพาะผลการค้นหานี้ (${filtered.length.toLocaleString()} รายการ)` 
+        : 'เลือกทั้งหมดในตาราง';
+
+      // 3. Render Header with Select All Checkbox & Sortable Click Handlers
+      thead.innerHTML = `
+        <tr>
+          <th class="p-3 pl-4 w-10 text-center border-b border-slate-700">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" ${allSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" title="${selectAllTitle}">
+          </th>
+          <th class="p-3 w-12 text-center text-slate-400 border-b border-slate-700">#</th>
+          ${cfg.columns.map(c => {
+            const isSorted = tableSortColumn === c.key;
+            const arrow = isSorted ? (tableSortAsc ? '▲' : '▼') : '';
+            return `
+              <th onclick="toggleSortColumn('${c.key}')" class="p-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700/60 transition ${c.align === 'right' ? 'text-right' : 'text-left'}">
+                <span class="inline-flex items-center gap-1.5">
+                  ${c.label}
+                  <span class="text-[10px] text-blue-400 font-mono">${arrow}</span>
+                </span>
+              </th>
+            `;
+          }).join('')}
+          <th class="p-3 pr-4 text-center border-b border-slate-700 w-28">จัดการ (Action)</th>
+        </tr>
+      `;
+
+      const selectAllEl = document.getElementById('selectAllCheckbox');
+      if (selectAllEl) {
+        selectAllEl.indeterminate = someSelected;
+      }
+
       // Update Filter Counter
       document.getElementById('filteredCountText').innerText = `แสดง ${filtered.length.toLocaleString()} จากทั้งหมด ${list.length.toLocaleString()} รายการ`;
 
@@ -1287,6 +1524,7 @@
             </td>
           </tr>
         `;
+        updateSelectionUI();
         return;
       }
 
@@ -1371,12 +1609,13 @@
     }
 
     function toggleSelectAll(isChecked) {
-      const list = databaseData[currentTab] || [];
+      const targetRows = currentFilteredRows.length > 0 ? currentFilteredRows : (databaseData[currentTab] || []);
       if (isChecked) {
-        list.forEach(r => selectedDocIds.add(r._docId));
+        targetRows.forEach(r => selectedDocIds.add(r._docId));
       } else {
-        selectedDocIds.clear();
+        targetRows.forEach(r => selectedDocIds.delete(r._docId));
       }
+      updateSelectionUI();
       renderCurrentTable();
     }
 
@@ -1384,7 +1623,10 @@
       selectedDocIds.clear();
       updateSelectionUI();
       const selectAll = document.getElementById('selectAllCheckbox');
-      if (selectAll) selectAll.checked = false;
+      if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+      }
       const rows = document.querySelectorAll('#tableBody input[type="checkbox"]');
       rows.forEach(cb => cb.checked = false);
     }
@@ -1396,35 +1638,127 @@
       const text = document.getElementById('batchCountText');
       const info = document.getElementById('tableSelectionInfo');
 
-      if (info) info.innerText = `เลือก ${count.toLocaleString()} แถว`;
+      const filterNotice = currentFilterText ? ` (จากผลค้นหา ${currentFilteredRows.length.toLocaleString()} รายการ)` : '';
+      if (info) info.innerText = `เลือก ${count.toLocaleString()} แถว${filterNotice}`;
 
       if (count > 0 && currentTab !== 'dashboard') {
         if (badge) badge.innerText = count;
-        if (text) text.innerText = `เลือก ${count.toLocaleString()} รายการ`;
+        if (text) text.innerText = `เลือก ${count.toLocaleString()} รายการ${filterNotice}`;
         if (toolbar) toolbar.classList.add('show');
       } else {
         if (toolbar) toolbar.classList.remove('show');
       }
+
+      // Sync selectAllCheckbox status based on currently filtered rows
+      const selectAllEl = document.getElementById('selectAllCheckbox');
+      if (selectAllEl && currentFilteredRows.length > 0) {
+        const allSelected = currentFilteredRows.every(r => selectedDocIds.has(r._docId));
+        const someSelected = !allSelected && currentFilteredRows.some(r => selectedDocIds.has(r._docId));
+        selectAllEl.checked = allSelected;
+        selectAllEl.indeterminate = someSelected;
+      } else if (selectAllEl) {
+        selectAllEl.checked = false;
+        selectAllEl.indeterminate = false;
+      }
     }
 
-    // Execute Batch Delete with SweetAlert2
+    // Verify Admin Password before critical actions
+    async function verifyAdminPassword(inputPass) {
+      if (!inputPass) return false;
+      const passStr = String(inputPass).trim();
+      const passHash = hashPassword(passStr);
+      const rawHash = (typeof CryptoJS !== 'undefined') ? CryptoJS.MD5(passStr).toString(CryptoJS.enc.Hex) : passStr;
+
+      try {
+        const snap = await db.collection('users').get();
+        const adminUsername = currentAdminUser?.username;
+
+        // 1. If logged in with specific admin, verify against that user
+        if (adminUsername) {
+          const userDoc = snap.docs.find(d => {
+            const u = d.data();
+            const dbU = String(u.username || '').trim().toLowerCase();
+            const dbP = String(u.password || '');
+            return dbU === adminUsername.toLowerCase() && (dbP === passHash || dbP === rawHash || dbP === passStr);
+          });
+          if (userDoc) return true;
+        }
+
+        // 2. Fallback: check if matches any user with role === 'admin'
+        const anyAdmin = snap.docs.find(d => {
+          const u = d.data();
+          const role = String(u.role || '').toLowerCase();
+          const dbP = String(u.password || '');
+          return role === 'admin' && (dbP === passHash || dbP === rawHash || dbP === passStr);
+        });
+
+        if (anyAdmin) return true;
+      } catch (err) {
+        console.error('Password verification error:', err);
+      }
+      return false;
+    }
+
+    // Execute Batch Delete with SweetAlert2 & Admin Password Verification
     async function executeBatchDelete() {
       const count = selectedDocIds.size;
       if (count === 0) return;
 
       const cfg = TABLE_CONFIGS[currentTab];
-      const result = await Swal.fire({
-        title: `ยืนยันการลบ ${count.toLocaleString()} รายการ?`,
-        html: `คุณกำลังจะลบข้อมูล <b>${count}</b> แถว ออกจาก Collection <b>"${cfg.title}"</b> ใน Firebase โดยตรง<br><span class="text-rose-600 font-bold text-xs">⚠️ การลบนี้จะมีผลทันทีและไม่สามารถกู้คืนได้</span>`,
+      const filterNotice = currentFilterText ? `<div class="mt-2 text-xs text-blue-600 font-semibold bg-blue-50 py-1 px-2.5 rounded-lg border border-blue-200 inline-block"><i class="fas fa-filter mr-1"></i>จากผลการค้นหา: "${currentFilterText}"</div>` : '';
+
+      const { value: enteredPassword, isConfirmed } = await Swal.fire({
+        title: `ยืนยันการลบ ${count.toLocaleString()} รายการ`,
+        html: `
+          <div class="text-left text-xs text-slate-600 space-y-2 mb-3">
+            <p>คุณกำลังจะลบข้อมูลจำนวน <b class="text-slate-800">${count.toLocaleString()} แถว</b> ออกจาก Collection <b>"${cfg.title}"</b> ใน Firebase โดยตรง</p>
+            ${filterNotice}
+            <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold flex items-start gap-2">
+              <i class="fas fa-exclamation-triangle text-rose-500 mt-0.5 text-sm shrink-0"></i>
+              <span>คำเตือน: การลบนี้จะมีผลทันทีและไม่สามารถกู้คืนข้อมูลได้ กรุณากรอกรหัสผ่านเพื่อยืนยัน</span>
+            </div>
+            <p class="font-bold text-slate-700 pt-1 flex items-center gap-1.5">
+              <i class="fas fa-key text-amber-500"></i> กรุณากรอกรหัสผ่าน Admin เพื่อยืนยัน:
+            </p>
+          </div>
+        `,
+        input: 'password',
+        inputPlaceholder: 'กรอกรหัสผ่าน Admin',
+        inputAttributes: {
+          autocapitalize: 'off',
+          autocorrect: 'off',
+          autocomplete: 'current-password',
+          id: 'swalBatchDeletePassword'
+        },
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e11d48',
         cancelButtonColor: '#64748b',
-        confirmButtonText: `<i class="fas fa-trash-alt mr-1"></i> ยืนยันลบ ${count} รายการ`,
-        cancelButtonText: 'ยกเลิก'
+        confirmButtonText: `<i class="fas fa-trash-alt mr-1"></i> ยืนยันรหัสผ่านและลบข้อมูล`,
+        cancelButtonText: 'ยกเลิก',
+        showLoaderOnConfirm: true,
+        backdrop: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        preConfirm: async (password) => {
+          if (!password || !password.trim()) {
+            Swal.showValidationMessage('กรุณากรอกรหัสผ่าน Admin');
+            return false;
+          }
+          try {
+            const isValid = await verifyAdminPassword(password.trim());
+            if (!isValid) {
+              Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+              return false;
+            }
+            return password.trim();
+          } catch (error) {
+            Swal.showValidationMessage(`เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์: ${error.message}`);
+            return false;
+          }
+        }
       });
 
-      if (!result.isConfirmed) return;
+      if (!isConfirmed || !enteredPassword) return;
 
       const loadingBox = document.getElementById('loadingBox');
       if (loadingBox) loadingBox.classList.remove('hidden');
@@ -1450,6 +1784,9 @@
           timer: 1500,
           showConfirmButton: false
         });
+
+        // Record Deletes Quota
+        recordQuotaOp('deletes', idList.length, idList.length * 200);
 
         clearAllSelections();
         await loadAllData();
@@ -1485,6 +1822,9 @@
         await db.collection(currentTab).doc(docId).delete();
         selectedDocIds.delete(docId);
         
+        // Record Delete Quota
+        recordQuotaOp('deletes', 1, 200);
+
         Swal.fire({
           icon: 'success',
           title: 'ลบข้อมูลเรียบร้อยแล้ว',
@@ -1671,6 +2011,9 @@
             showConfirmButton: false
           });
         }
+
+        // Record Write Quota
+        recordQuotaOp('writes', 1, estimateDocSize(updateData) + 250);
 
         closeModal();
         await loadAllData();
@@ -1878,6 +2221,9 @@
 
           await batch.commit();
         }
+
+        // Record Write Quota for batch Excel import
+        recordQuotaOp('writes', rawRows.length, rawRows.length * 400);
 
         Swal.fire({
           icon: 'success',
