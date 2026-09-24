@@ -3,121 +3,143 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kstore Database Manager (สำหรับผู้ดูแลระบบ Admin)</title>
+  <title>Kstore Database Manager (ระบบจัดการฐานข้อมูล Admin) - กลุ่มวิจัยเคมีดิน</title>
+  
+  <!-- CSS & Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK (Compat Version) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 
   <style>
     * { font-family: 'Sarabun', sans-serif; }
+    
     .tab-btn.active {
       background: #2563eb;
       color: #ffffff;
-      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
     }
+    
+    .tab-btn:not(.active):hover {
+      background: rgba(241, 245, 249, 1);
+      color: #1e293b;
+    }
+
     th, td { white-space: nowrap; }
-    .toast {
-      animation: fadeInOut 3s forwards;
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Floating Batch Action Toolbar */
+    #batchToolbar {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(120%);
+      opacity: 0;
+      pointer-events: none;
     }
-    @keyframes fadeInOut {
-      0% { opacity: 0; transform: translateY(10px); }
-      15% { opacity: 1; transform: translateY(0); }
-      85% { opacity: 1; transform: translateY(0); }
-      100% { opacity: 0; transform: translateY(-10px); }
+    #batchToolbar.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Pulse & Glass Animations */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+    }
+
+    .sort-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    
+    .badge-updated {
+      animation: pulseHighlight 2s infinite;
+    }
+    @keyframes pulseHighlight {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
   </style>
-  <!-- ================= ANTI-DEVTOOLS & SECURITY PROTECTION ================= -->
+
+  <!-- ================= ANTI-DEVTOOLS & SECURITY ================= -->
   <script>
     (function() {
-      // 📱 ข้ามการทำงานทั้งหมดบนสมาร์ทโฟนและแท็บเล็ต เพื่อให้คีย์บอร์ดและพิมพ์ข้อความได้สะดวก 100%
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
         || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) 
         || ('ontouchstart' in window);
 
-      if (isMobile) {
-        return; // ไม่ต้องป้องกันใดๆ บนมือถือ
-      }
+      if (isMobile) return;
 
-      // Secret key to allow DevTools for Admin on PC: Ctrl + Alt + Shift + D
       let devtoolsAllowed = sessionStorage.getItem('kstore_allow_devtools_viewer') === 'true';
 
       window.enableDevTools = function() {
         devtoolsAllowed = true;
         sessionStorage.setItem('kstore_allow_devtools_viewer', 'true');
-        console.log('%c[Security] DevTools Protection temporarily unlocked for this session.', 'color:green; font-weight:bold;');
         const lock = document.getElementById('devtoolsLockOverlay');
         if (lock) lock.classList.add('hidden');
       };
 
-      // 1. Disable Right-Click Context Menu on PC
       document.addEventListener('contextmenu', function(e) {
         if (devtoolsAllowed) return;
         e.preventDefault();
         return false;
       }, { capture: true });
 
-      // 2. Disable Keyboard Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
       document.addEventListener('keydown', function(e) {
-        // Admin unlock combo: Ctrl + Alt + Shift + D
         if (e.ctrlKey && e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
           e.preventDefault();
           window.enableDevTools();
-          alert('🔓 ปลดล็อกโหมดผู้พัฒนา (DevTools Unlocked) สำหรับเซสชันนี้เรียบร้อยแล้ว');
+          Swal.fire({
+            icon: 'success',
+            title: 'ปลดล็อก DevTools',
+            text: 'เปิดสิทธิ์เครื่องมือผู้พัฒนาสำหรับเซสชันนี้เรียบร้อยแล้ว',
+            timer: 2000,
+            showConfirmButton: false
+          });
           return;
         }
 
         if (devtoolsAllowed) return;
 
-        // F12
-        if (e.key === 'F12' || e.keyCode === 123) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-
-        // Ctrl + Shift + I / J / C (Inspect / Console)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-
-        // Ctrl + U (View Source)
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-
-        // Ctrl + S (Save Page)
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
+        if (e.key === 'F12' || e.keyCode === 123 ||
+           ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) ||
+           ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) ||
+           ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83))) {
           e.preventDefault();
           e.stopPropagation();
           return false;
         }
       }, { capture: true });
 
-      // 3. DevTools Open Detection & Security Lock Screen (Desktop Only)
       function showDevToolsLock() {
         if (devtoolsAllowed) return;
         let overlay = document.getElementById('devtoolsLockOverlay');
         if (!overlay) {
           overlay = document.createElement('div');
           overlay.id = 'devtoolsLockOverlay';
-          overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;color:#ffffff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:20px;';
+          overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;color:#ffffff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
           overlay.innerHTML = `
-            <div style="background:#1e293b;padding:30px;border-radius:20px;border:1px solid #334155;max-width:460px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-              <div style="font-size:48px;margin-bottom:12px;">🛡️</div>
-              <h2 style="font-size:20px;font-weight:bold;margin-bottom:8px;color:#f43f5e;">ระบบความปลอดภัย (Security Alert)</h2>
-              <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px;">
+            <div style="background:#1e293b;padding:32px;border-radius:24px;border:1px solid #334155;max-width:480px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+              <div style="font-size:52px;margin-bottom:12px;">🛡️</div>
+              <h2 style="font-size:22px;font-weight:bold;margin-bottom:8px;color:#f43f5e;">ระบบความปลอดภัย (Security Protection)</h2>
+              <p style="font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:16px;">
                 ตรวจพบการเปิดเครื่องมือผู้พัฒนา (DevTools)<br>
-                ระบบจำกัดการเข้าถึงโครงสร้างและซอร์สโค้ดเพื่อความปลอดภัยของฐานข้อมูล
+                ระบบจำกัดการเข้าถึงโครงสร้างและซอร์สโค้ดเพื่อความปลอดภัยของฐานข้อมูล Kstore
               </p>
               <p style="font-size:12px;color:#64748b;">
                 กรุณาปิดหน้าต่าง DevTools / Inspect Element แล้วรีเฟรชหน้าเว็บใหม่อีกครั้ง
@@ -135,7 +157,6 @@
         if (overlay) overlay.classList.add('hidden');
       }
 
-      // Check DevTools via Window outer/inner dimensions
       setInterval(function() {
         if (devtoolsAllowed) return;
         const threshold = 180;
@@ -150,26 +171,21 @@
           }
         }
       }, 800);
-
-      // Console Warning
-      try {
-        console.log('%c⚠️ คำเตือนด้านความปลอดภัย (SECURITY WARNING)', 'color:#ef4444; font-size:22px; font-weight:bold;');
-        console.log('%cระบบจัดการฐานข้อมูล Kstore ได้รับการคุ้มครองความปลอดภัย การแทรกแซงโค้ดอาจส่งผลต่อความถูกต้องของฐานข้อมูล', 'font-size:12px; color:#64748b;');
-      } catch(e) {}
     })();
   </script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
   <!-- ================= 1. ADMIN LOGIN VIEW ================= -->
-  <div id="loginView" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="loginView" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <div class="text-center mb-6">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg text-2xl transform rotate-3">
-          <i class="fas fa-shield-halved"></i>
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center mx-auto mb-3 shadow-xl text-3xl transform rotate-3">
+          <i class="fas fa-database"></i>
         </div>
-        <h2 class="text-xl font-bold text-slate-900">Kstore Database Manager</h2>
-        <p class="text-xs text-slate-500 mt-1">พื้นที่จัดการฐานข้อมูลสด &bull; สำหรับผู้ดูแลระบบ (Admin Only)</p>
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Kstore Database Manager</h2>
+        <p class="text-xs text-blue-600 font-bold uppercase tracking-wider mt-1">กลุ่มวิจัยเคมีดิน &bull; CHMStockPro</p>
+        <p class="text-[11px] text-slate-400 mt-1">ศูนย์ควบคุมและบริหารจัดการฐานข้อมูลสด (Admin Only)</p>
       </div>
 
       <div id="loginError" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
@@ -181,7 +197,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อผู้ใช้งาน (Admin Username)</label>
           <div class="relative">
-            <i class="fas fa-user absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <i class="fas fa-user absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
             <input type="text" id="adminUser" required placeholder="เช่น admin" class="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
           </div>
         </div>
@@ -189,18 +205,19 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
           <div class="relative">
-            <i class="fas fa-lock absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <i class="fas fa-lock absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
             <input type="password" id="adminPass" required placeholder="กรอกรหัสผ่าน Admin" class="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
           </div>
         </div>
 
-        <button type="submit" id="btnLoginSubmit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
-          <i class="fas fa-sign-in-alt"></i> ยืนยันตัวตนเข้าสู่ระบบ
+        <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/25 transition flex items-center justify-center gap-2">
+          <i class="fas fa-shield-halved"></i> ยืนยันตัวตนเข้าสู่ระบบ Admin
         </button>
       </form>
 
-      <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
-        <i class="fas fa-lock mr-1"></i> เชื่อมต่อความปลอดภัยตรงกับ Firebase Cloud Firestore
+      <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+        <span><i class="fas fa-shield-alt text-emerald-500 mr-1"></i> เชื่อมต่อตรง Firestore</span>
+        <code class="text-blue-600 font-mono font-bold bg-slate-50 px-2 py-0.5 rounded">kstore-e7f22</code>
       </div>
     </div>
   </div>
@@ -209,142 +226,393 @@
   <div id="appView" class="flex-1 flex flex-col hidden">
     <!-- Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md">
-            <i class="fas fa-database"></i>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center text-xl shadow-md">
+            <i class="fas fa-server"></i>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="font-bold text-lg text-slate-900 leading-tight">Kstore Database Manager</h1>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+              <h1 class="font-extrabold text-base sm:text-lg text-slate-900 leading-tight">Kstore Database Manager</h1>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                <i class="fas fa-flask mr-0.5"></i> กลุ่มวิจัยเคมีดิน
+              </span>
+              <span class="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
                 <i class="fas fa-user-shield mr-0.5"></i> ADMIN
               </span>
             </div>
-            <p class="text-xs text-slate-500">จัดการข้อมูล Firebase สดๆ &bull; แก้ไข / ลบ / เพิ่มข้อมูลได้ง่ายเหมือน Google Sheets</p>
+            <p class="text-[11px] text-slate-500">จัดการข้อมูล Firebase สดๆ &bull; เรียงลำดับ &bull; ค้นหาไว &bull; ลบทีละหลายรายการ &bull; เช็ค Quota</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <!-- Admin User Profile Badge -->
-          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+        <div class="flex items-center flex-wrap gap-2">
+          <!-- Real-time Clock -->
+          <div id="topClock" class="hidden lg:flex items-center px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
+            <i class="far fa-clock text-blue-500 mr-2"></i>
+            <span id="clockText">กำลังโหลด...</span>
+          </div>
+
+          <!-- Connection Status -->
+          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700" title="Firestore Connected">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>Live DB</span>
+          </div>
+
+          <!-- Admin User Badge -->
+          <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs">
             <i class="fas fa-circle-user text-blue-600 text-sm"></i>
             <span id="currentAdminName" class="font-bold text-slate-700">Admin</span>
           </div>
 
-          <button onclick="refreshData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <!-- Action Buttons -->
+          <button onclick="refreshAllData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition" title="ดึงข้อมูลล่าสุดจาก Firebase">
             <i class="fas fa-sync-alt" id="refreshIcon"></i> รีเฟรช
           </button>
-          <button onclick="exportCurrentTableToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
-            <i class="fas fa-file-excel"></i> ส่งออกตาราง (.xlsx)
+          <button onclick="triggerExcelImport()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="นำเข้าไฟล์ Excel (.xlsx) เข้าสู่ฐานข้อมูล">
+            <i class="fas fa-file-import"></i> นำเข้า Excel (.xlsx)
           </button>
-          <button onclick="exportAllToExcel()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
-            <i class="fas fa-download"></i> โหลดทุกชีท (.xlsx)
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileUpload(this)">
+          <button onclick="exportCurrentTableToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="ส่งออกตารางที่เปิดอยู่เป็น .xlsx">
+            <i class="fas fa-file-excel"></i> ส่งออกตาราง
           </button>
-          <button onclick="handleAdminLogout()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition" title="ออกจากระบบ">
-            <i class="fas fa-power-off"></i> ออกจากระบบ
+          <button onclick="exportAllToExcel()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="สำรองทุกตารางรวมเป็นไฟล์เดียว">
+            <i class="fas fa-download"></i> โหลดทุกชีท
+          </button>
+          <button onclick="handleAdminLogout()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition" title="ออกจากระบบ">
+            <i class="fas fa-power-off"></i>
           </button>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-2 flex overflow-x-auto gap-2 text-sm border-t border-slate-100">
-        <button onclick="switchTab('materials')" class="tab-btn active px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" id="tab-materials">
-          <i class="fas fa-boxes"></i> รายการวัสดุ (Materials) <span id="count-materials" class="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">0</span>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-1 pb-2 flex overflow-x-auto gap-2 text-xs sm:text-sm border-t border-slate-100">
+        <button onclick="switchTab('dashboard')" class="tab-btn active px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-2 shrink-0" id="tab-dashboard">
+          <i class="fas fa-chart-pie text-sky-400"></i> แดชบอร์ดสถานะ DB
         </button>
-        <button onclick="switchTab('withdraw_history')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-withdraw_history">
-          <i class="fas fa-arrow-circle-up text-rose-500"></i> ประวัติการเบิก (Withdraw) <span id="count-withdraw_history" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        <button onclick="switchTab('materials')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-materials">
+          <i class="fas fa-boxes text-blue-500"></i> รายการวัสดุ <span id="count-materials" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
-        <button onclick="switchTab('import_history')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-import_history">
-          <i class="fas fa-arrow-circle-down text-emerald-500"></i> ประวัติการนำเข้า (Import) <span id="count-import_history" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        <button onclick="switchTab('withdraw_history')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-withdraw_history">
+          <i class="fas fa-arrow-circle-up text-rose-500"></i> ประวัติการเบิก <span id="count-withdraw_history" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
-        <button onclick="switchTab('bom')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-bom">
-          <i class="fas fa-cubes text-amber-500"></i> สูตรการผลิต (BOM) <span id="count-bom" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        <button onclick="switchTab('import_history')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-import_history">
+          <i class="fas fa-arrow-circle-down text-emerald-500"></i> ประวัติการนำเข้า <span id="count-import_history" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
-        <button onclick="switchTab('users')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-users">
-          <i class="fas fa-users text-purple-500"></i> ผู้ใช้งาน (Users) <span id="count-users" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        <button onclick="switchTab('bom')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-bom">
+          <i class="fas fa-cubes text-amber-500"></i> สูตรการผลิต (BOM) <span id="count-bom" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
-        <button onclick="switchTab('log')" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-200" id="tab-log">
-          <i class="fas fa-history text-slate-500"></i> ประวัติล็อกอิน (Log) <span id="count-log" class="text-xs bg-slate-200 px-1.5 py-0.5 rounded-full">0</span>
+        <button onclick="switchTab('users')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-users">
+          <i class="fas fa-users text-purple-500"></i> ผู้ใช้งาน <span id="count-users" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button onclick="switchTab('log')" class="tab-btn px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-2 shrink-0 text-slate-600" id="tab-log">
+          <i class="fas fa-history text-slate-500"></i> ประวัติล็อกอิน (Log) <span id="count-log" class="text-[11px] bg-slate-200 px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
       </div>
     </header>
 
-    <!-- Controls Bar -->
+    <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex-1 flex flex-col w-full">
-      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="relative flex-1 min-w-[240px]">
-          <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
-          <input type="text" id="searchInput" oninput="onSearch(this.value)" placeholder="พิมพ์ค้นหาในตารางนี้... (ค้นหาได้ทุกคอลัมน์)" class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+      
+      <!-- ================= A. DASHBOARD VIEW (DATABASE HEALTH & USAGE) ================= -->
+      <div id="dashboardSection" class="space-y-4">
+        
+        <!-- Top Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Card 1: Storage Limit Quota -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">พื้นที่จัดเก็บ Firestore</span>
+                <span class="p-2 rounded-xl bg-blue-50 text-blue-600 text-sm"><i class="fas fa-hard-drive"></i></span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-black text-slate-900" id="dashStorageUsedText">0.00 KB</span>
+                <span class="text-xs font-bold text-slate-400">/ 1,024 MB (1 GB)</span>
+              </div>
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2.5 mt-3 overflow-hidden">
+                <div id="dashStorageBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0.1%"></div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">โควตาฟรี (Spark Plan)</span>
+              <span id="dashStoragePercent" class="font-extrabold text-blue-600">0.00%</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Total Documents -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">จำนวนเอกสารสะสม</span>
+                <span class="p-2 rounded-xl bg-purple-50 text-purple-600 text-sm"><i class="fas fa-layer-group"></i></span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-black text-slate-900" id="dashTotalDocs">0</span>
+                <span class="text-xs font-bold text-slate-400">แถว / Documents</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-2">กระจายอยู่ใน 6 Collections หลักของระบบ</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">สถานะข้อมูล</span>
+              <span class="font-bold text-emerald-600"><i class="fas fa-check-circle mr-1"></i> โครงสร้างสมบูรณ์</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Daily Quota Estimation -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">โควตาฟรีรายวัน (Daily Limit)</span>
+                <span class="p-2 rounded-xl bg-amber-50 text-amber-600 text-sm"><i class="fas fa-bolt"></i></span>
+              </div>
+              <div class="mt-2 text-xs space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-500 font-medium">Reads:</span>
+                  <span class="font-bold text-slate-700">ฟรี 50,000 / วัน</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-500 font-medium">Writes:</span>
+                  <span class="font-bold text-slate-700">ฟรี 20,000 / วัน</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-500 font-medium">Deletes:</span>
+                  <span class="font-bold text-slate-700">ฟรี 20,000 / วัน</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">การใช้งานวันนี้</span>
+              <span class="font-bold text-emerald-600"><i class="fas fa-shield-alt mr-1"></i> ปลอดภัยสูงมาก</span>
+            </div>
+          </div>
+
+          <!-- Card 4: System Health & Density -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">สุขภาพฐานข้อมูล (Health)</span>
+                <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm"><i class="fas fa-heart-pulse"></i></span>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-black text-emerald-600">100%</span>
+                <span class="text-xs font-bold text-slate-400">Excellent</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-2" id="dashDensityDesc">ความหนาแน่นการใช้งาน: สภาพคล่องสูง ตอบสนองทันที</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">เวลาตอบสนอง DB:</span>
+              <span id="dashLatency" class="font-bold text-blue-600 font-mono">~35ms</span>
+            </div>
+          </div>
+
         </div>
-        <div class="flex items-center gap-3">
-          <span id="filteredCountText" class="text-xs text-slate-500">แสดง 0 รายการ</span>
-          <button onclick="openAddModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
-            <i class="fas fa-plus"></i> เพิ่มแถวใหม่
-          </button>
+
+        <!-- Charts Section (2 Columns) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          
+          <!-- Chart 1: Collection Size Breakdown (Doughnut) -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <i class="fas fa-chart-pie text-blue-600"></i> สัดส่วนข้อมูลในแต่ละ Collection
+                </h3>
+                <p class="text-[11px] text-slate-400">ขนาดความจุโดยประมาณของแต่ละตารางใน Firestore</p>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">By Size (KB)</span>
+            </div>
+            <div class="relative h-60 flex items-center justify-center">
+              <canvas id="chartCollectionBreakdown"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Transaction Density (Bar) -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <i class="fas fa-chart-line text-emerald-600"></i> ความหนาแน่นของธุรกรรม (Transaction Density)
+                </h3>
+                <p class="text-[11px] text-slate-400">เปรียบเทียบจำนวนการเบิก vs นำเข้า และประวัติการใช้งาน</p>
+              </div>
+              <button onclick="scanStockIntegrity()" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                <i class="fas fa-stethoscope"></i> ตรวจสต๊อก
+              </button>
+            </div>
+            <div class="relative h-60 flex items-center justify-center">
+              <canvas id="chartActivityDensity"></canvas>
+            </div>
+          </div>
+
         </div>
+
+        <!-- Detailed Breakdown Table -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div>
+              <h3 class="font-bold text-sm text-slate-800">แจกแจงรายละเอียดและขนาดความจุแต่ละ Collection</h3>
+              <p class="text-xs text-slate-400">ข้อมูลขนาดไบต์ (Bytes) โดยประมาณตามเกณฑ์โครงสร้าง Firestore Document</p>
+            </div>
+            <span class="text-xs font-bold text-slate-500">6 Collections พร้อมใช้</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left text-slate-700">
+              <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[11px] border-b border-slate-200">
+                <tr>
+                  <th class="p-3 pl-4">ชื่อ Collection</th>
+                  <th class="p-3">คำอธิบาย</th>
+                  <th class="p-3 text-right">จำนวนแถว (Docs)</th>
+                  <th class="p-3 text-right">ขนาดโดยประมาณ</th>
+                  <th class="p-3 text-right">สัดส่วนพื้นที่</th>
+                  <th class="p-3 text-center pr-4">จัดการด่วน</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="dashCollectionTableBody">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Table Container -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col relative min-h-[450px]">
-        <div id="loadingBox" class="absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center z-20">
-          <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p class="mt-3 text-sm font-semibold text-slate-600">กำลังดึงข้อมูลสดจาก Firebase Firestore...</p>
+      <!-- ================= B. TABLE MANAGER VIEW ================= -->
+      <div id="tableSection" class="flex-1 flex flex-col hidden">
+        
+        <!-- Controls Bar -->
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3 flex flex-wrap items-center justify-between gap-3">
+          
+          <!-- Search input -->
+          <div class="relative flex-1 min-w-[220px]">
+            <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" oninput="onSearch(this.value)" placeholder="ค้นหาข้อมูลในตารางนี้... (ค้นหาได้ทุกคอลัมน์แบบ Real-time)" class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+            <button onclick="clearSearch()" id="clearSearchBtn" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 hidden text-xs">
+              <i class="fas fa-times-circle"></i>
+            </button>
+          </div>
+
+          <!-- Sort Select -->
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-bold text-slate-600 shrink-0"><i class="fas fa-arrow-down-short-wide text-blue-600 mr-1"></i>เรียงตาม:</label>
+            <select id="sortSelect" onchange="onSortChange(this.value)" class="text-xs py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+              <option value="updated_desc">🔥 ข้อมูลอัปเดตล่าสุด (Newest)</option>
+              <option value="updated_asc">ข้อมูลเก่าสุด (Oldest)</option>
+              <option value="name_asc">ชื่อ ก-ฮ (Name A-Z)</option>
+              <option value="name_desc">ชื่อ ฮ-ก (Name Z-A)</option>
+              <option value="qty_desc">ยอดคงเหลือ/จำนวน (มากไปน้อย)</option>
+              <option value="qty_asc">ยอดคงเหลือ/จำนวน (น้อยไปมาก)</option>
+            </select>
+          </div>
+
+          <!-- Add Button & Counter -->
+          <div class="flex items-center gap-3">
+            <span id="filteredCountText" class="text-xs font-medium text-slate-500">แสดง 0 รายการ</span>
+            <button onclick="openAddModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95">
+              <i class="fas fa-plus"></i> เพิ่มแถวใหม่
+            </button>
+          </div>
+
         </div>
 
-        <div class="overflow-x-auto flex-1">
-          <table class="w-full text-left text-xs text-slate-700" id="mainTable">
-            <thead class="bg-slate-800 text-white font-semibold sticky top-0 z-10 select-none" id="tableHeader">
-              <!-- Headers populated dynamically -->
-            </thead>
-            <tbody class="divide-y divide-slate-100" id="tableBody">
-              <!-- Rows populated dynamically -->
-            </tbody>
-          </table>
+        <!-- Table Container -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col relative min-h-[460px]">
+          
+          <!-- Loading Overlay -->
+          <div id="loadingBox" class="absolute inset-0 bg-white/85 backdrop-blur-xs flex flex-col items-center justify-center z-20">
+            <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p class="mt-3 text-xs font-bold text-slate-600">กำลังเชื่อมต่อข้อมูลสดจาก Firebase Cloud Firestore...</p>
+          </div>
+
+          <!-- Scrollable Table -->
+          <div class="overflow-x-auto flex-1">
+            <table class="w-full text-left text-xs text-slate-700" id="mainTable">
+              <thead class="bg-slate-800 text-white font-semibold sticky top-0 z-10 select-none" id="tableHeader">
+                <!-- Dynamically populated -->
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="tableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Footer Info -->
+          <div class="p-2.5 px-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-500">
+            <div class="flex items-center gap-3">
+              <span><i class="fas fa-info-circle text-blue-500 mr-1"></i> สามารถคลิกที่หัวตารางเพื่อเรียงลำดับ หรือเลือก Checkbox ด้านหน้าเพื่อลบทีละหลายรายการได้</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="tableSelectionInfo" class="font-bold text-blue-600">เลือก 0 แถว</span>
+            </div>
+          </div>
+
         </div>
+
       </div>
+
     </main>
 
-    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
-      Kstore Firebase Live Manager &bull; Real-time Connected to <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">kstore-e7f22</code>
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-2.5 text-center text-xs text-slate-400">
+      Kstore Firebase Live Manager &bull; Real-time Connected to <code class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono font-bold">kstore-e7f22</code> &bull; กลุ่มวิจัยเคมีดิน กรมพัฒนาที่ดิน
     </footer>
   </div>
 
-  <!-- Edit / Add Modal -->
-  <div id="editModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm" id="modalIcon">
+  <!-- ================= 3. FLOATING BATCH DELETE TOOLBAR ================= -->
+  <div id="batchToolbar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4">
+    <div class="flex items-center gap-2 pr-3 border-r border-slate-700">
+      <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs" id="batchCountBadge">0</span>
+      <span class="text-xs font-bold text-slate-200" id="batchCountText">เลือก 0 รายการ</span>
+    </div>
+
+    <button onclick="executeBatchDelete()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition transform active:scale-95">
+      <i class="fas fa-trash-alt"></i> ลบที่เลือกทั้งหมด (Batch Delete)
+    </button>
+
+    <button onclick="exportSelectedToExcel()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+      <i class="fas fa-file-export"></i> โหลดเฉพาะที่เลือก
+    </button>
+
+    <button onclick="clearAllSelections()" class="px-2.5 py-2 text-slate-400 hover:text-white rounded-xl text-xs font-semibold transition" title="ยกเลิกการเลือก">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <!-- ================= 4. EDIT / ADD MODAL ================= -->
+  <div id="editModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div class="p-4 px-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm shadow-md" id="modalIcon">
             <i class="fas fa-edit"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-sm" id="modalTitle">แก้ไขข้อมูล</h3>
+            <h3 class="font-extrabold text-slate-900 text-sm sm:text-base" id="modalTitle">แก้ไขข้อมูล</h3>
             <p class="text-[11px] text-slate-500" id="modalSubtitle">กำลังแก้ไขรายการใน Firestore</p>
           </div>
         </div>
-        <button onclick="closeModal()" class="w-7 h-7 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+        <button onclick="closeModal()" class="w-8 h-8 rounded-xl hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
           <i class="fas fa-times"></i>
         </button>
       </div>
 
-      <div class="p-5 overflow-y-auto space-y-3.5 flex-1 text-xs" id="modalFields">
+      <div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs" id="modalFields">
         <!-- Fields generated dynamically -->
       </div>
 
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-        <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition">ยกเลิก</button>
-        <button onclick="saveModalData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition" id="btnSaveModal">
+      <div class="p-4 px-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-2.5">
+        <button onclick="closeModal()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition">ยกเลิก</button>
+        <button onclick="saveModalData()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition active:scale-95" id="btnSaveModal">
           <i class="fas fa-save"></i> บันทึกลง Firebase
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl shadow-lg text-white font-medium text-xs flex items-center gap-2"></div>
-
+  <!-- ================= 5. SCRIPT & LOGIC ================= -->
   <script>
+    // Firebase Configuration (Matching kstore.html)
     const firebaseConfig = {
       apiKey: "AIzaSyCGoXviRd3Jbxpyd_JEU4kD2acHAIMlMV8",
       authDomain: "kstore-e7f22.firebaseapp.com",
@@ -354,10 +622,13 @@
       appId: "1:9565632832:web:6a5f010201a0d1c67362a5"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
+    const storage = firebase.storage();
 
-    // Password MD5 Hash Helper (matching Kstore system)
+    // Password MD5 Hash Helper (Matching Kstore system)
     function hashPassword(pass) {
       if (!pass) return '';
       if (typeof CryptoJS !== 'undefined') {
@@ -367,9 +638,120 @@
       return String(pass).trim();
     }
 
-    // --- AUTHENTICATION STATE & LOGIC ---
-    let currentAdminUser = null;
+    // --- TABLE CONFIGURATIONS ---
+    const TABLE_CONFIGS = {
+      materials: {
+        title: "Materials",
+        desc: "รายการสต๊อกวัสดุและอุปกรณ์เคมี",
+        idKey: "material_id",
+        columns: [
+          { key: "material_id", label: "รหัสวัสดุ", readonly: true },
+          { key: "name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "ยอดคงเหลือ", type: "number", align: "right", format: v => `<span class="font-extrabold text-xs ${(parseFloat(v)||0) > 0 ? 'text-blue-600' : 'text-rose-500'}">${parseFloat(v)||0}</span>` },
+          { key: "units", label: "หน่วย" },
+          { key: "price", label: "ราคาต่อหน่วย", type: "number", align: "right", format: v => (parseFloat(v)||0).toFixed(2) },
+          { key: "category", label: "หมวดหมู่" },
+          { key: "location", label: "สถานที่จัดเก็บ" },
+          { key: "type", label: "ประเภทชุดตรวจ", format: v => Array.isArray(v) ? v.map(t => `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 mr-1">${t}</span>`).join('') : (v||'') },
+          { key: "brand", label: "ยี่ห้อ (Brand)" },
+          { key: "remark", label: "หมายเหตุ" },
+          { key: "last_import_date", label: "นำเข้าล่าสุด", format: formatDate },
+          { key: "last_withdraw_date", label: "เบิกล่าสุด", format: formatDate },
+          { key: "image_url", label: "รูปภาพ", format: v => v ? `<a href="${v}" target="_blank" class="text-blue-600 font-bold hover:underline inline-flex items-center gap-1"><i class="fas fa-image"></i> ดูรูป</a>` : '-' }
+        ]
+      },
+      withdraw_history: {
+        title: "Withdraw_History",
+        desc: "ประวัติการเบิกใช้วัสดุและตัดสต๊อกผลิต",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาที่เบิก", format: formatDate },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "material_name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "จำนวนที่เบิก", type: "number", align: "right", format: v => `<span class="font-extrabold text-rose-600">-${v}</span>` },
+          { key: "user_name", label: "ผู้ทำรายการ" },
+          { key: "ref_doc", label: "เอกสารอ้างอิง" },
+          { key: "type", label: "ประเภท" },
+          { key: "action_type", label: "Action" }
+        ]
+      },
+      import_history: {
+        title: "Import_History",
+        desc: "ประวัติการนำเข้าสต๊อกวัสดุ",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาที่นำเข้า", format: formatDate },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "material_name", label: "ชื่อวัสดุ" },
+          { key: "qty", label: "จำนวนที่นำเข้า", type: "number", align: "right", format: v => `<span class="font-extrabold text-emerald-600">+${v}</span>` },
+          { key: "user_name", label: "ผู้ทำรายการ" },
+          { key: "ref_doc", label: "เอกสารอ้างอิง" },
+          { key: "type", label: "ประเภท" },
+          { key: "action_type", label: "Action" }
+        ]
+      },
+      bom: {
+        title: "BOM",
+        desc: "สูตรส่วนประกอบชุดตรวจวิเคราะห์ดิน",
+        columns: [
+          { key: "type", label: "ประเภทชุดตรวจ" },
+          { key: "material_id", label: "รหัสวัสดุ" },
+          { key: "req_qty", label: "จำนวนต่อชุด", type: "number", align: "right", format: (v, r) => `<span class="font-bold text-slate-800">${v !== undefined && v !== null && v !== '' ? v : (r?.req_per_kit || 0)}</span>` }
+        ]
+      },
+      users: {
+        title: "Users",
+        desc: "บัญชีผู้ใช้งานและสิทธิ์การเข้าถึง",
+        idKey: "user_id",
+        columns: [
+          { key: "user_id", label: "User ID", readonly: true },
+          { key: "username", label: "ชื่อผู้ใช้ (Username)", format: v => `<span class="font-mono font-bold text-indigo-700">${v}</span>` },
+          { key: "fullname", label: "ชื่อ-นามสกุล" },
+          { key: "group", label: "กลุ่มงาน" },
+          { key: "role", label: "ระดับ", format: v => `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${v==='admin' ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-700'}">${v}</span>` },
+          { key: "status", label: "สถานะ", format: v => `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${v==='approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}">${v}</span>` },
+          { key: "permissions", label: "สิทธิ์การใช้งาน", format: v => Array.isArray(v) ? v.join(', ') : (v||'') }
+        ]
+      },
+      log: {
+        title: "Log",
+        desc: "ประวัติการล็อกอินเข้าสู่ระบบ",
+        columns: [
+          { key: "timestamp", label: "วัน-เวลาเข้าสู่ระบบ", format: formatDate },
+          { key: "user_id", label: "User ID" },
+          { key: "username", label: "ชื่อผู้ใช้" },
+          { key: "fullname", label: "ชื่อ-นามสกุล" },
+          { key: "role", label: "ระดับ" }
+        ]
+      }
+    };
 
+    // State Variables
+    let currentAdminUser = null;
+    let currentTab = 'dashboard';
+    let databaseData = {};
+    let currentFilterText = '';
+    let currentSortMode = 'updated_desc';
+    let tableSortColumn = null;
+    let tableSortAsc = false;
+    let selectedDocIds = new Set();
+    let editingDocId = null;
+    let isAddMode = false;
+
+    // Charts references
+    let chartBreakdownInstance = null;
+    let chartDensityInstance = null;
+
+    // --- CLOCK RUNNER ---
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+      const el = document.getElementById('clockText');
+      if (el) el.innerText = `${dateStr} | ${timeStr}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- AUTHENTICATION STATE & LOGIC ---
     function checkAuthSession() {
       try {
         const saved = sessionStorage.getItem('kstore_db_manager_admin');
@@ -441,7 +823,6 @@
           throw new Error('บัญชีของคุณยังไม่ได้รับการอนุมัติ (Status: ' + userData.status + ')');
         }
 
-        // Save Admin session
         currentAdminUser = {
           user_id: userDoc.id,
           username: userData.username,
@@ -450,7 +831,14 @@
         };
         sessionStorage.setItem('kstore_db_manager_admin', JSON.stringify(currentAdminUser));
 
-        showToast(`ยินดีต้อนรับคุณ ${currentAdminUser.fullname} (Admin)`, 'success');
+        Swal.fire({
+          icon: 'success',
+          title: 'ยินดีต้อนรับเข้าสู่ระบบ',
+          text: `คุณ ${currentAdminUser.fullname} (Admin)`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+
         showAppView();
       } catch (err) {
         errMsg.innerText = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
@@ -462,195 +850,457 @@
     }
 
     function handleAdminLogout() {
-      if (!confirm('ยืนยันออกจากระบบจัดการฐานข้อมูล?')) return;
-      sessionStorage.removeItem('kstore_db_manager_admin');
-      currentAdminUser = null;
-      document.getElementById('adminPass').value = '';
-      showToast('ออกจากระบบเรียบร้อยแล้ว', 'success');
-      showLoginView();
+      Swal.fire({
+        title: 'ยืนยันออกจากระบบ?',
+        text: 'คุณต้องการออกจากระบบจัดการฐานข้อมูล Kstore หรือไม่',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'ออกจากระบบ',
+        cancelButtonText: 'ยกเลิก'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          sessionStorage.removeItem('kstore_db_manager_admin');
+          currentAdminUser = null;
+          document.getElementById('adminPass').value = '';
+          showLoginView();
+        }
+      });
     }
 
-    // --- TABLE CONFIGURATIONS ---
-    const TABLE_CONFIGS = {
-      materials: {
-        title: "Materials",
-        idKey: "material_id",
-        columns: [
-          { key: "material_id", label: "รหัสวัสดุ", readonly: true },
-          { key: "name", label: "ชื่อวัสดุ" },
-          { key: "qty", label: "ยอดคงเหลือ", type: "number", align: "right", format: v => `<span class="font-bold text-sm ${(parseFloat(v)||0) > 0 ? 'text-blue-600' : 'text-slate-400'}">${parseFloat(v)||0}</span>` },
-          { key: "units", label: "หน่วย" },
-          { key: "price", label: "ราคา", type: "number", align: "right" },
-          { key: "category", label: "หมวดหมู่" },
-          { key: "location", label: "สถานที่จัดเก็บ" },
-          { key: "type", label: "ประเภทชุดตรวจ", format: v => Array.isArray(v) ? v.join(', ') : (v||'') },
-          { key: "last_import_date", label: "นำเข้าล่าสุด", format: formatDate },
-          { key: "last_withdraw_date", label: "เบิกล่าสุด", format: formatDate },
-          { key: "image_url", label: "รูปภาพ", format: v => v ? `<a href="${v}" target="_blank" class="text-blue-600 underline hover:text-blue-800"><i class="fas fa-image mr-1"></i> ดูรูป</a>` : '-' }
-        ]
-      },
-      withdraw_history: {
-        title: "Withdraw_History",
-        columns: [
-          { key: "timestamp", label: "วัน-เวลาที่เบิก", format: formatDate },
-          { key: "material_id", label: "รหัสวัสดุ" },
-          { key: "material_name", label: "ชื่อวัสดุ" },
-          { key: "qty", label: "จำนวนที่เบิก", type: "number", align: "right", format: v => `<span class="font-bold text-rose-600">-${v}</span>` },
-          { key: "user_name", label: "ผู้ทำรายการ" },
-          { key: "ref_doc", label: "เอกสารอ้างอิง" },
-          { key: "type", label: "ประเภท" }
-        ]
-      },
-      import_history: {
-        title: "Import_History",
-        columns: [
-          { key: "timestamp", label: "วัน-เวลาที่นำเข้า", format: formatDate },
-          { key: "material_id", label: "รหัสวัสดุ" },
-          { key: "material_name", label: "ชื่อวัสดุ" },
-          { key: "qty", label: "จำนวนที่นำเข้า", type: "number", align: "right", format: v => `<span class="font-bold text-emerald-600">+${v}</span>` },
-          { key: "user_name", label: "ผู้ทำรายการ" },
-          { key: "ref_doc", label: "เอกสารอ้างอิง" },
-          { key: "type", label: "ประเภท" }
-        ]
-      },
-      bom: {
-        title: "BOM",
-        columns: [
-          { key: "type", label: "ประเภทชุดตรวจ" },
-          { key: "material_id", label: "รหัสวัสดุ" },
-          { key: "req_qty", label: "จำนวนต่อชุด", type: "number", align: "right", format: v => `<span class="font-semibold text-slate-800">${v}</span>` }
-        ]
-      },
-      users: {
-        title: "Users",
-        idKey: "user_id",
-        columns: [
-          { key: "user_id", label: "User ID", readonly: true },
-          { key: "username", label: "ชื่อผู้ใช้ (Username)", format: v => `<span class="font-mono font-bold text-indigo-700">${v}</span>` },
-          { key: "fullname", label: "ชื่อ-นามสกุล" },
-          { key: "group", label: "กลุ่มงาน" },
-          { key: "role", label: "ระดับ (admin/user)", format: v => `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${v==='admin' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}">${v}</span>` },
-          { key: "status", label: "สถานะ (approved/pending)", format: v => `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${v==='approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${v}</span>` },
-          { key: "permissions", label: "สิทธิ์การใช้งาน", format: v => Array.isArray(v) ? v.join(', ') : (v||'') }
-        ]
-      },
-      log: {
-        title: "Log",
-        columns: [
-          { key: "timestamp", label: "วัน-เวลาที่เข้าใช้งาน", format: formatDate },
-          { key: "user_id", label: "User ID" },
-          { key: "username", label: "ชื่อผู้ใช้" },
-          { key: "fullname", label: "ชื่อ-นามสกุล" },
-          { key: "role", label: "ระดับ" }
-        ]
-      }
-    };
-
-    let currentTab = 'materials';
-    let databaseData = {};
-    let currentFilterText = '';
-    let editingDocId = null;
-    let isAddMode = false;
-
-    function showToast(msg, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.className = `fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl shadow-lg text-white font-medium text-xs flex items-center gap-2 toast ${type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`;
-      toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${msg}`;
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
-
+    // --- DATE FORMATTER ---
     function formatDate(val) {
       if (!val) return '-';
       try {
         const d = new Date(val);
         if (isNaN(d.getTime())) return val;
-        return d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+        return d.toLocaleString('th-TH', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
       } catch(e) { return val; }
     }
 
+    // --- ESTIMATE FIRESTORE DOCUMENT SIZE (IN BYTES) ---
+    function estimateDocSize(docObj) {
+      // Base Firestore doc overhead ~32 bytes + string keys & typed values
+      let bytes = 32;
+      for (const [k, v] of Object.entries(docObj)) {
+        if (k.startsWith('_')) continue;
+        bytes += (k.length + 1);
+        if (typeof v === 'string') {
+          bytes += (new TextEncoder().encode(v)).length + 1;
+        } else if (typeof v === 'number') {
+          bytes += 8;
+        } else if (typeof v === 'boolean') {
+          bytes += 1;
+        } else if (v instanceof Date) {
+          bytes += 8;
+        } else if (Array.isArray(v)) {
+          bytes += JSON.stringify(v).length;
+        } else if (typeof v === 'object' && v !== null) {
+          bytes += JSON.stringify(v).length;
+        }
+      }
+      return bytes;
+    }
+
+    // --- LOAD ALL DATA FROM FIRESTORE ---
     async function loadAllData() {
-      document.getElementById('loadingBox').classList.remove('hidden');
+      const loadingBox = document.getElementById('loadingBox');
+      if (loadingBox) loadingBox.classList.remove('hidden');
       const icon = document.getElementById('refreshIcon');
       if (icon) icon.classList.add('fa-spin');
 
+      const startMs = performance.now();
       try {
         const collections = ['materials', 'withdraw_history', 'import_history', 'bom', 'users', 'log'];
-        const promises = collections.map(c => db.collection(c).get());
-        const snaps = await Promise.all(promises);
+        const snaps = await Promise.all(collections.map(c => db.collection(c).get()));
 
         collections.forEach((c, idx) => {
           const docs = snaps[idx].docs.map(d => ({ _docId: d.id, ...d.data() }));
-          if (c === 'withdraw_history' || c === 'import_history' || c === 'log') {
-            docs.sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-          }
           databaseData[c] = docs;
           const badge = document.getElementById(`count-${c}`);
           if (badge) badge.innerText = docs.length;
         });
 
-        renderCurrentTable();
+        const elapsed = (performance.now() - startMs).toFixed(0);
+        const latEl = document.getElementById('dashLatency');
+        if (latEl) latEl.innerText = `~${elapsed}ms`;
+
+        clearAllSelections();
+        updateDashboardMetrics();
+
+        if (currentTab === 'dashboard') {
+          renderDashboard();
+        } else {
+          renderCurrentTable();
+        }
       } catch (err) {
-        showToast('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + err.message, 'error');
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+          text: err.message
+        });
       } finally {
-        document.getElementById('loadingBox').classList.add('hidden');
+        if (loadingBox) loadingBox.classList.add('hidden');
         if (icon) icon.classList.remove('fa-spin');
       }
     }
 
+    function refreshAllData() {
+      loadAllData();
+    }
+
+    // --- TAB SWITCHING ---
     function switchTab(tab) {
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-blue-600', 'text-white');
         btn.classList.add('text-slate-600');
       });
+
       const activeBtn = document.getElementById(`tab-${tab}`);
       if (activeBtn) {
         activeBtn.classList.add('active');
         activeBtn.classList.remove('text-slate-600');
       }
-      document.getElementById('searchInput').value = '';
-      currentFilterText = '';
-      renderCurrentTable();
+
+      clearAllSelections();
+
+      if (tab === 'dashboard') {
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        document.getElementById('tableSection').classList.add('hidden');
+        renderDashboard();
+      } else {
+        document.getElementById('dashboardSection').classList.add('hidden');
+        document.getElementById('tableSection').classList.remove('hidden');
+        document.getElementById('searchInput').value = '';
+        currentFilterText = '';
+        renderCurrentTable();
+      }
+    }
+
+    // ==========================================
+    // 📊 DASHBOARD & QUOTA ENGINE
+    // ==========================================
+    function updateDashboardMetrics() {
+      let totalDocs = 0;
+      let totalBytes = 0;
+      const collStats = {};
+
+      Object.keys(TABLE_CONFIGS).forEach(tKey => {
+        const list = databaseData[tKey] || [];
+        totalDocs += list.length;
+        let cBytes = 0;
+        list.forEach(item => {
+          cBytes += estimateDocSize(item);
+        });
+        totalBytes += cBytes;
+        collStats[tKey] = {
+          count: list.length,
+          bytes: cBytes
+        };
+      });
+
+      // Update Top Cards
+      const totalDocsEl = document.getElementById('dashTotalDocs');
+      if (totalDocsEl) totalDocsEl.innerText = totalDocs.toLocaleString();
+
+      const usedKb = totalBytes / 1024;
+      const usedMb = usedKb / 1024;
+      const freeTierMb = 1024; // 1 GB free on Firebase Spark
+      const percent = (usedMb / freeTierMb) * 100;
+
+      const storageText = usedMb >= 1 ? `${usedMb.toFixed(2)} MB` : `${usedKb.toFixed(2)} KB`;
+      const storageTextEl = document.getElementById('dashStorageUsedText');
+      if (storageTextEl) storageTextEl.innerText = storageText;
+
+      const percentText = percent < 0.01 ? '< 0.01%' : `${percent.toFixed(2)}%`;
+      const percentEl = document.getElementById('dashStoragePercent');
+      if (percentEl) percentEl.innerText = `${percentText} ของโควตาฟรี`;
+
+      const barEl = document.getElementById('dashStorageBar');
+      if (barEl) {
+        const visualWidth = Math.max(percent * 4, 1); // visually visible bar
+        barEl.style.width = `${Math.min(visualWidth, 100)}%`;
+      }
+
+      // Populate Table Body in Dashboard
+      const dashTableBody = document.getElementById('dashCollectionTableBody');
+      if (dashTableBody) {
+        dashTableBody.innerHTML = Object.keys(TABLE_CONFIGS).map(tKey => {
+          const cfg = TABLE_CONFIGS[tKey];
+          const st = collStats[tKey] || { count: 0, bytes: 0 };
+          const cKb = st.bytes / 1024;
+          const cSizeStr = cKb >= 1024 ? `${(cKb/1024).toFixed(2)} MB` : `${cKb.toFixed(1)} KB`;
+          const cPercent = totalBytes > 0 ? ((st.bytes / totalBytes) * 100).toFixed(1) : 0;
+
+          return `
+            <tr class="hover:bg-blue-50/50 transition">
+              <td class="p-3 pl-4 font-mono font-bold text-blue-700">
+                <i class="fas fa-folder text-amber-500 mr-1.5"></i> ${tKey}
+              </td>
+              <td class="p-3 text-slate-500">${cfg.desc || cfg.title}</td>
+              <td class="p-3 text-right font-extrabold text-slate-800">${st.count.toLocaleString()}</td>
+              <td class="p-3 text-right font-mono font-semibold text-slate-600">${cSizeStr}</td>
+              <td class="p-3 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <div class="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${cPercent}%"></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-slate-600 w-10 text-right">${cPercent}%</span>
+                </div>
+              </td>
+              <td class="p-3 text-center pr-4">
+                <button onclick="switchTab('${tKey}')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-600 hover:text-white rounded-lg text-[11px] font-bold transition">
+                  เปิดดู <i class="fas fa-arrow-right text-[10px] ml-0.5"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      return collStats;
+    }
+
+    function renderDashboard() {
+      const collStats = updateDashboardMetrics();
+
+      // Render Doughnut Chart
+      const ctxBreakdown = document.getElementById('chartCollectionBreakdown');
+      if (ctxBreakdown) {
+        const labels = Object.keys(TABLE_CONFIGS).map(k => TABLE_CONFIGS[k].title);
+        const dataValues = Object.keys(TABLE_CONFIGS).map(k => (collStats[k]?.bytes || 0) / 1024);
+
+        if (chartBreakdownInstance) chartBreakdownInstance.destroy();
+        chartBreakdownInstance = new Chart(ctxBreakdown, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: dataValues,
+              backgroundColor: ['#2563eb', '#e11d48', '#059669', '#d97706', '#9333ea', '#64748b'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Sarabun', size: 11 } } },
+              tooltip: {
+                callbacks: {
+                  label: function(c) {
+                    return ` ${c.label}: ${c.raw.toFixed(1)} KB`;
+                  }
+                }
+              }
+            },
+            cutout: '68%'
+          }
+        });
+      }
+
+      // Render Activity Density Chart
+      const ctxDensity = document.getElementById('chartActivityDensity');
+      if (ctxDensity) {
+        const mCount = databaseData.materials?.length || 0;
+        const wCount = databaseData.withdraw_history?.length || 0;
+        const iCount = databaseData.import_history?.length || 0;
+        const bCount = databaseData.bom?.length || 0;
+        const uCount = databaseData.users?.length || 0;
+        const lCount = databaseData.log?.length || 0;
+
+        if (chartDensityInstance) chartDensityInstance.destroy();
+        chartDensityInstance = new Chart(ctxDensity, {
+          type: 'bar',
+          data: {
+            labels: ['วัสดุ (Materials)', 'เบิก (Withdraw)', 'นำเข้า (Import)', 'สูตร BOM', 'ผู้ใช้ (Users)', 'ล็อก (Log)'],
+            datasets: [{
+              label: 'จำนวนรายการทั้งหมด',
+              data: [mCount, wCount, iCount, bCount, uCount, lCount],
+              backgroundColor: ['#3b82f6', '#f43f5e', '#10b981', '#f59e0b', '#a855f7', '#94a3b8'],
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(c) {
+                    return ` มีทั้งหมด ${c.raw.toLocaleString()} รายการ`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+              x: { grid: { display: false } }
+            }
+          }
+        });
+      }
+    }
+
+    // --- QUICK STOCK HEALTH & INTEGRITY SCANNER ---
+    function scanStockIntegrity() {
+      const materials = databaseData.materials || [];
+      const withdraws = databaseData.withdraw_history || [];
+      const imports = databaseData.import_history || [];
+
+      let negativeStock = [];
+      materials.forEach(m => {
+        const q = parseFloat(m.qty || 0);
+        if (q < 0) negativeStock.push({ id: m.material_id, name: m.name, qty: q });
+      });
+
+      if (negativeStock.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: `พบวัสดุมียอดคงเหลือติดลบ (${negativeStock.length} รายการ)`,
+          html: `<div class="text-left text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 max-h-40 overflow-auto font-mono">
+            ${negativeStock.map(n => `• [${n.id}] ${n.name}: <b class="text-rose-600">${n.qty}</b>`).join('<br>')}
+          </div>
+          <p class="mt-2 text-xs text-slate-500">สามารถเข้าไปแก้ไขยอดสต๊อกในตาราง Materials ได้ทันที</p>`,
+          confirmButtonText: 'รับทราบ',
+          confirmButtonColor: '#2563eb'
+        });
+      } else {
+        Swal.fire({
+          icon: 'success',
+          title: 'สต๊อกสินค้าสมบูรณ์ 100%',
+          text: `ตรวจสอบวัสดุทั้งหมด ${materials.length} รายการ ไม่พบรายการที่ยอดติดลบ ระบบทำงานปกติ`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    }
+
+    // ==========================================
+    // 📋 TABLE RENDERING, SORTING & FILTERING
+    // ==========================================
+    function getUpdatedDateTimestamp(item) {
+      if (!item) return 0;
+      const v = item.updated_at?.toDate ? item.updated_at.toDate().getTime() : 
+                (item.updated_at ? new Date(item.updated_at).getTime() : 
+                (item.timestamp ? new Date(item.timestamp).getTime() : 
+                (item.last_import_date ? new Date(item.last_import_date).getTime() : 
+                (item.last_withdraw_date ? new Date(item.last_withdraw_date).getTime() : 
+                (item.created_at ? new Date(item.created_at).getTime() : 0)))));
+      return isNaN(v) ? 0 : v;
     }
 
     function renderCurrentTable() {
+      if (currentTab === 'dashboard') return;
+
       const cfg = TABLE_CONFIGS[currentTab];
       const list = databaseData[currentTab] || [];
       const thead = document.getElementById('tableHeader');
       const tbody = document.getElementById('tableBody');
 
-      // Render Header
+      // 1. Render Header with Select All Checkbox & Sortable Click Handlers
+      const allSelected = list.length > 0 && list.every(r => selectedDocIds.has(r._docId));
+
       thead.innerHTML = `
         <tr>
-          <th class="p-3 pl-4 w-12 text-center text-slate-400 border-b border-slate-700">#</th>
-          ${cfg.columns.map(c => `<th class="p-3 border-b border-slate-700 ${c.align === 'right' ? 'text-right' : 'text-left'}">${c.label}</th>`).join('')}
+          <th class="p-3 pl-4 w-10 text-center border-b border-slate-700">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" ${allSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+          </th>
+          <th class="p-3 w-12 text-center text-slate-400 border-b border-slate-700">#</th>
+          ${cfg.columns.map(c => {
+            const isSorted = tableSortColumn === c.key;
+            const arrow = isSorted ? (tableSortAsc ? '▲' : '▼') : '';
+            return `
+              <th onclick="toggleSortColumn('${c.key}')" class="p-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700/60 transition ${c.align === 'right' ? 'text-right' : 'text-left'}">
+                <span class="inline-flex items-center gap-1.5">
+                  ${c.label}
+                  <span class="text-[10px] text-blue-400 font-mono">${arrow}</span>
+                </span>
+              </th>
+            `;
+          }).join('')}
           <th class="p-3 pr-4 text-center border-b border-slate-700 w-28">จัดการ (Action)</th>
         </tr>
       `;
 
-      // Filter rows
-      let filtered = list;
+      // 2. Filter Rows
+      let filtered = [...list];
       if (currentFilterText) {
         const q = currentFilterText.toLowerCase();
-        filtered = list.filter(row => {
-          return Object.values(row).some(v => String(v||'').toLowerCase().includes(q));
+        filtered = filtered.filter(row => {
+          return Object.values(row).some(v => {
+            if (v === null || v === undefined) return false;
+            if (Array.isArray(v)) return v.join(' ').toLowerCase().includes(q);
+            return String(v).toLowerCase().includes(q);
+          });
         });
       }
 
-      document.getElementById('filteredCountText').innerText = `แสดง ${filtered.length} จากทั้งหมด ${list.length} แถว`;
+      // 3. Sort Rows
+      if (tableSortColumn) {
+        filtered.sort((a, b) => {
+          let vA = a[tableSortColumn];
+          let vB = b[tableSortColumn];
+          if (vA === undefined || vA === null) vA = '';
+          if (vB === undefined || vB === null) vB = '';
+          if (typeof vA === 'number' && typeof vB === 'number') {
+            return tableSortAsc ? vA - vB : vB - vA;
+          }
+          return tableSortAsc ? String(vA).localeCompare(String(vB), 'th') : String(vB).localeCompare(String(vA), 'th');
+        });
+      } else {
+        // Default Sort by sortSelect value
+        if (currentSortMode === 'updated_desc') {
+          filtered.sort((a, b) => getUpdatedDateTimestamp(b) - getUpdatedDateTimestamp(a));
+        } else if (currentSortMode === 'updated_asc') {
+          filtered.sort((a, b) => getUpdatedDateTimestamp(a) - getUpdatedDateTimestamp(b));
+        } else if (currentSortMode === 'name_asc') {
+          filtered.sort((a, b) => String(a.name || a.material_name || a.fullname || a.username || '').localeCompare(String(b.name || b.material_name || b.fullname || b.username || ''), 'th'));
+        } else if (currentSortMode === 'name_desc') {
+          filtered.sort((a, b) => String(b.name || b.material_name || b.fullname || b.username || '').localeCompare(String(a.name || a.material_name || a.fullname || a.username || ''), 'th'));
+        } else if (currentSortMode === 'qty_desc') {
+          filtered.sort((a, b) => parseFloat(b.qty || b.req_qty || 0) - parseFloat(a.qty || a.req_qty || 0));
+        } else if (currentSortMode === 'qty_asc') {
+          filtered.sort((a, b) => parseFloat(a.qty || a.req_qty || 0) - parseFloat(b.qty || b.req_qty || 0));
+        }
+      }
+
+      // Update Filter Counter
+      document.getElementById('filteredCountText').innerText = `แสดง ${filtered.length.toLocaleString()} จากทั้งหมด ${list.length.toLocaleString()} รายการ`;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${cfg.columns.length + 2}" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${cfg.columns.length + 3}" class="p-16 text-center text-slate-400 font-medium">
+              <i class="fas fa-search mb-3 text-3xl text-slate-300"></i>
+              <p>ไม่พบข้อมูลที่ตรงกับคำค้นหา "${currentFilterText}"</p>
+            </td>
+          </tr>
+        `;
         return;
       }
 
-      // Render Rows
+      // 4. Render Table Rows
       tbody.innerHTML = filtered.map((row, rIdx) => {
         const docId = row._docId;
+        const isChecked = selectedDocIds.has(docId);
+
         return `
-          <tr class="hover:bg-blue-50/50 transition">
-            <td class="p-3 pl-4 text-center text-slate-400 font-mono text-[11px]">${rIdx + 1}</td>
+          <tr class="hover:bg-blue-50/60 transition ${isChecked ? 'bg-blue-50/70' : ''}">
+            <td class="p-3 pl-4 text-center">
+              <input type="checkbox" onchange="toggleRowSelection('${docId}', this.checked)" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+            </td>
+            <td class="p-3 text-center text-slate-400 font-mono text-[11px]">${rIdx + 1}</td>
             ${cfg.columns.map(col => {
               const val = row[col.key];
               const displayVal = col.format ? col.format(val, row) : (val !== undefined && val !== null ? val : '-');
@@ -658,10 +1308,10 @@
             }).join('')}
             <td class="p-3 pr-4 text-center">
               <div class="flex items-center justify-center gap-1.5">
-                <button onclick="openEditModal('${docId}')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md text-[11px] font-bold transition flex items-center gap-1">
+                <button onclick="openEditModal('${docId}')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
                   <i class="fas fa-edit"></i> แก้ไข
                 </button>
-                <button onclick="deleteRow('${docId}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md text-[11px] font-bold transition flex items-center gap-1">
+                <button onclick="deleteSingleRow('${docId}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
                   <i class="fas fa-trash-alt"></i> ลบ
                 </button>
               </div>
@@ -669,18 +1319,193 @@
           </tr>
         `;
       }).join('');
+
+      updateSelectionUI();
     }
 
-    function onSearch(val) {
-      currentFilterText = val.trim();
+    // --- SORTING HANDLERS ---
+    function onSortChange(val) {
+      currentSortMode = val;
+      tableSortColumn = null;
       renderCurrentTable();
     }
 
-    function refreshData() {
-      loadAllData();
+    function toggleSortColumn(colKey) {
+      if (tableSortColumn === colKey) {
+        tableSortAsc = !tableSortAsc;
+      } else {
+        tableSortColumn = colKey;
+        tableSortAsc = true;
+      }
+      renderCurrentTable();
     }
 
-    // --- EDIT / ADD MODAL ---
+    // --- SEARCH HANDLER ---
+    function onSearch(val) {
+      currentFilterText = val.trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) {
+        if (currentFilterText) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      }
+      renderCurrentTable();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      currentFilterText = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderCurrentTable();
+    }
+
+    // ==========================================
+    // 🗑️ MULTI-SELECTION & BATCH DELETE ENGINE
+    // ==========================================
+    function toggleRowSelection(docId, isChecked) {
+      if (isChecked) {
+        selectedDocIds.add(docId);
+      } else {
+        selectedDocIds.delete(docId);
+      }
+      updateSelectionUI();
+    }
+
+    function toggleSelectAll(isChecked) {
+      const list = databaseData[currentTab] || [];
+      if (isChecked) {
+        list.forEach(r => selectedDocIds.add(r._docId));
+      } else {
+        selectedDocIds.clear();
+      }
+      renderCurrentTable();
+    }
+
+    function clearAllSelections() {
+      selectedDocIds.clear();
+      updateSelectionUI();
+      const selectAll = document.getElementById('selectAllCheckbox');
+      if (selectAll) selectAll.checked = false;
+      const rows = document.querySelectorAll('#tableBody input[type="checkbox"]');
+      rows.forEach(cb => cb.checked = false);
+    }
+
+    function updateSelectionUI() {
+      const count = selectedDocIds.size;
+      const toolbar = document.getElementById('batchToolbar');
+      const badge = document.getElementById('batchCountBadge');
+      const text = document.getElementById('batchCountText');
+      const info = document.getElementById('tableSelectionInfo');
+
+      if (info) info.innerText = `เลือก ${count.toLocaleString()} แถว`;
+
+      if (count > 0 && currentTab !== 'dashboard') {
+        if (badge) badge.innerText = count;
+        if (text) text.innerText = `เลือก ${count.toLocaleString()} รายการ`;
+        if (toolbar) toolbar.classList.add('show');
+      } else {
+        if (toolbar) toolbar.classList.remove('show');
+      }
+    }
+
+    // Execute Batch Delete with SweetAlert2
+    async function executeBatchDelete() {
+      const count = selectedDocIds.size;
+      if (count === 0) return;
+
+      const cfg = TABLE_CONFIGS[currentTab];
+      const result = await Swal.fire({
+        title: `ยืนยันการลบ ${count.toLocaleString()} รายการ?`,
+        html: `คุณกำลังจะลบข้อมูล <b>${count}</b> แถว ออกจาก Collection <b>"${cfg.title}"</b> ใน Firebase โดยตรง<br><span class="text-rose-600 font-bold text-xs">⚠️ การลบนี้จะมีผลทันทีและไม่สามารถกู้คืนได้</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: `<i class="fas fa-trash-alt mr-1"></i> ยืนยันลบ ${count} รายการ`,
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (!result.isConfirmed) return;
+
+      const loadingBox = document.getElementById('loadingBox');
+      if (loadingBox) loadingBox.classList.remove('hidden');
+
+      try {
+        const idList = Array.from(selectedDocIds);
+        // Firestore batch max 500 ops per commit
+        const chunkSize = 450;
+        for (let i = 0; i < idList.length; i += chunkSize) {
+          const chunk = idList.slice(i, i + chunkSize);
+          const batch = db.batch();
+          chunk.forEach(id => {
+            const docRef = db.collection(currentTab).doc(id);
+            batch.delete(docRef);
+          });
+          await batch.commit();
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'ลบข้อมูลสำเร็จ',
+          text: `ลบรายการทั้งหมด ${count} รายการเรียบร้อยแล้ว`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+
+        clearAllSelections();
+        await loadAllData();
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการลบข้อมูล',
+          text: err.message
+        });
+      } finally {
+        if (loadingBox) loadingBox.classList.add('hidden');
+      }
+    }
+
+    // Delete Single Row
+    async function deleteSingleRow(docId) {
+      const cfg = TABLE_CONFIGS[currentTab];
+      const result = await Swal.fire({
+        title: 'ยืนยันการลบรายการนี้?',
+        html: `ต้องการลบ Document ID: <code class="text-rose-600 font-mono">${docId}</code> ออกจากฐานข้อมูล <b>"${cfg.title}"</b> หรือไม่`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'ลบรายการ',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        document.getElementById('loadingBox').classList.remove('hidden');
+        await db.collection(currentTab).doc(docId).delete();
+        selectedDocIds.delete(docId);
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'ลบข้อมูลเรียบร้อยแล้ว',
+          timer: 1200,
+          showConfirmButton: false
+        });
+
+        await loadAllData();
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการลบ',
+          text: err.message
+        });
+        document.getElementById('loadingBox').classList.add('hidden');
+      }
+    }
+
+    // ==========================================
+    // ✏️ EDIT & ADD MODAL ENGINE
+    // ==========================================
     function openEditModal(docId) {
       isAddMode = false;
       editingDocId = docId;
@@ -690,7 +1515,7 @@
 
       document.getElementById('modalTitle').innerText = `แก้ไขรายการ (${cfg.title})`;
       document.getElementById('modalSubtitle').innerText = `Document ID: ${docId}`;
-      document.getElementById('modalIcon').className = 'w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm';
+      document.getElementById('modalIcon').className = 'w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm shadow-md';
       document.getElementById('modalIcon').innerHTML = '<i class="fas fa-edit"></i>';
 
       const fieldsContainer = document.getElementById('modalFields');
@@ -701,15 +1526,30 @@
 
         return `
           <div>
-            <label class="block font-bold text-slate-700 mb-1">${col.label} <span class="text-slate-400 font-normal">(${col.key})</span></label>
+            <label class="block font-bold text-slate-700 mb-1">
+              ${col.label} <span class="text-slate-400 font-normal font-mono text-[11px]">(${col.key})</span>
+            </label>
             <input type="${col.type === 'number' ? 'number' : 'text'}" 
+                   step="${col.type === 'number' ? 'any' : ''}"
                    id="field_${col.key}" 
                    value="${String(val).replace(/"/g, '&quot;')}" 
                    ${col.readonly ? 'disabled class="bg-slate-100 text-slate-400 cursor-not-allowed"' : ''}
-                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500 transition">
+                   class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 transition">
           </div>
         `;
       }).join('');
+
+      // Extra helper for Users: Password Reset input
+      if (currentTab === 'users') {
+        fieldsContainer.innerHTML += `
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block font-bold text-rose-600 mb-1">
+              <i class="fas fa-key mr-1"></i> รีเซ็ตรหัสผ่านใหม่ (Reset Password)
+            </label>
+            <input type="password" id="field_reset_password" placeholder="กรอกรหัสผ่านใหม่หากต้องการเปลี่ยน (หรือเว้นว่างไว้)" class="w-full px-3 py-2 border border-rose-200 bg-rose-50/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 transition">
+          </div>
+        `;
+      }
 
       document.getElementById('editModal').classList.remove('hidden');
     }
@@ -720,8 +1560,8 @@
       const cfg = TABLE_CONFIGS[currentTab];
 
       document.getElementById('modalTitle').innerText = `เพิ่มรายการใหม่ (${cfg.title})`;
-      document.getElementById('modalSubtitle').innerText = `สร้าง Document ใหม่ลงใน Firebase Collection: ${currentTab}`;
-      document.getElementById('modalIcon').className = 'w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-sm';
+      document.getElementById('modalSubtitle').innerText = `สร้าง Document ใหม่ลงใน Collection: ${currentTab}`;
+      document.getElementById('modalIcon').className = 'w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm shadow-md';
       document.getElementById('modalIcon').innerHTML = '<i class="fas fa-plus"></i>';
 
       const fieldsContainer = document.getElementById('modalFields');
@@ -731,17 +1571,31 @@
         if (col.key === 'user_id') defaultVal = 'U' + Date.now();
         if (col.key === 'timestamp') defaultVal = new Date().toISOString();
         if (col.key === 'qty' || col.key === 'price' || col.key === 'req_qty') defaultVal = '0';
+        if (col.key === 'role') defaultVal = 'user';
+        if (col.key === 'status') defaultVal = 'approved';
 
         return `
           <div>
-            <label class="block font-bold text-slate-700 mb-1">${col.label} <span class="text-slate-400 font-normal">(${col.key})</span></label>
+            <label class="block font-bold text-slate-700 mb-1">
+              ${col.label} <span class="text-slate-400 font-normal font-mono text-[11px]">(${col.key})</span>
+            </label>
             <input type="${col.type === 'number' ? 'number' : 'text'}" 
+                   step="${col.type === 'number' ? 'any' : ''}"
                    id="field_${col.key}" 
                    value="${defaultVal}" 
-                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                   class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition">
           </div>
         `;
       }).join('');
+
+      if (currentTab === 'users') {
+        fieldsContainer.innerHTML += `
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block font-bold text-slate-700 mb-1">รหัสผ่านตั้งต้น (Initial Password) <span class="text-rose-500">*</span></label>
+            <input type="password" id="field_reset_password" placeholder="ตั้งรหัสผ่านสำหรับผู้ใช้งานนี้" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition" required>
+          </div>
+        `;
+      }
 
       document.getElementById('editModal').classList.remove('hidden');
     }
@@ -777,6 +1631,19 @@
           }
         });
 
+        // Check if resetting user password
+        if (currentTab === 'users') {
+          const passInput = document.getElementById('field_reset_password');
+          if (passInput && passInput.value.trim()) {
+            updateData.password = hashPassword(passInput.value.trim());
+          }
+        }
+
+        // Sync BOM req_per_kit with req_qty
+        if (currentTab === 'bom') {
+          updateData.req_per_kit = updateData.req_qty;
+        }
+
         updateData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
 
         if (isAddMode) {
@@ -789,44 +1656,48 @@
           } else {
             await db.collection(currentTab).add(updateData);
           }
-          showToast('เพิ่มรายการใหม่สำเร็จ!', 'success');
+          Swal.fire({
+            icon: 'success',
+            title: 'เพิ่มรายการสำเร็จ',
+            timer: 1200,
+            showConfirmButton: false
+          });
         } else {
           await db.collection(currentTab).doc(editingDocId).set(updateData, { merge: true });
-          showToast('บันทึกการแก้ไขข้อมูลสำเร็จ!', 'success');
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกการแก้ไขสำเร็จ',
+            timer: 1200,
+            showConfirmButton: false
+          });
         }
 
         closeModal();
         await loadAllData();
       } catch (err) {
-        showToast('เกิดข้อผิดพลาดในการบันทึก: ' + err.message, 'error');
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการบันทึก',
+          text: err.message
+        });
       } finally {
         btn.disabled = false;
         btn.innerHTML = originalHTML;
       }
     }
 
-    // --- DELETE ROW ---
-    async function deleteRow(docId) {
-      if (!confirm(`ยืนยันการลบรายการ ID "${docId}" ออกจากฐานข้อมูล Firebase?\n(การลบนี้จะถูกลบจริงทันที)`)) {
+    // ==========================================
+    // 📥 EXPORT TO EXCEL (.XLSX)
+    // ==========================================
+    function exportCurrentTableToExcel() {
+      if (currentTab === 'dashboard') {
+        exportAllToExcel();
         return;
       }
 
-      try {
-        document.getElementById('loadingBox').classList.remove('hidden');
-        await db.collection(currentTab).doc(docId).delete();
-        showToast(`ลบรายการ ${docId} เรียบร้อยแล้ว`, 'success');
-        await loadAllData();
-      } catch (err) {
-        showToast('เกิดข้อผิดพลาดในการลบ: ' + err.message, 'error');
-        document.getElementById('loadingBox').classList.add('hidden');
-      }
-    }
-
-    // --- EXPORT TO EXCEL ---
-    function exportCurrentTableToExcel() {
       const cfg = TABLE_CONFIGS[currentTab];
       const list = databaseData[currentTab] || [];
-      if (!list.length) return alert('ไม่มีข้อมูลในตารางนี้');
+      if (!list.length) return Swal.fire('ไม่มีข้อมูลในตารางนี้', '', 'info');
 
       const rows = list.map(row => {
         const obj = {};
@@ -842,6 +1713,27 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, cfg.title);
       XLSX.writeFile(wb, `Kstore_${cfg.title}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function exportSelectedToExcel() {
+      const cfg = TABLE_CONFIGS[currentTab];
+      const list = (databaseData[currentTab] || []).filter(r => selectedDocIds.has(r._docId));
+      if (!list.length) return Swal.fire('ไม่ได้เลือกรายการใด', '', 'info');
+
+      const rows = list.map(row => {
+        const obj = {};
+        cfg.columns.forEach(col => {
+          let v = row[col.key];
+          if (Array.isArray(v)) v = v.join(', ');
+          obj[col.label] = v !== undefined && v !== null ? v : '';
+        });
+        return obj;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `${cfg.title}_Selected`);
+      XLSX.writeFile(wb, `Kstore_${cfg.title}_Selected_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
     function exportAllToExcel() {
@@ -861,10 +1753,154 @@
         const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ "หมายเหตุ": "ไม่มีข้อมูล" }]);
         XLSX.utils.book_append_sheet(wb, ws, cfg.title);
       });
-      XLSX.writeFile(wb, `Kstore_Full_Database_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.writeFile(wb, `Kstore_Full_Database_Backup_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    // Start by checking authentication
+    // ==========================================
+    // 📤 IMPORT FROM EXCEL (.XLSX)
+    // ==========================================
+    function triggerExcelImport() {
+      const fileInput = document.getElementById('excelFileInput');
+      if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+      }
+    }
+
+    async function handleExcelFileUpload(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      try {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { type: 'array' });
+        const sheetNames = wb.SheetNames;
+
+        if (!sheetNames || sheetNames.length === 0) {
+          return Swal.fire('ไม่พบ Sheet', 'ไฟล์ Excel ไม่มี Sheet ข้อมูลใดๆ', 'error');
+        }
+
+        // Auto select sheet based on currentTab
+        let defaultSheet = sheetNames[0];
+        if (currentTab === 'bom') {
+          const match = sheetNames.find(s => s.toLowerCase() === 'bom');
+          if (match) defaultSheet = match;
+        } else if (currentTab === 'materials') {
+          const match = sheetNames.find(s => s.toLowerCase() === 'materials');
+          if (match) defaultSheet = match;
+        } else if (currentTab === 'users') {
+          const match = sheetNames.find(s => s.toLowerCase() === 'users');
+          if (match) defaultSheet = match;
+        }
+
+        let selectedSheet = defaultSheet;
+        if (sheetNames.length > 1) {
+          const { value: chosen } = await Swal.fire({
+            title: 'เลือก Sheet ที่ต้องการนำเข้า',
+            input: 'select',
+            inputOptions: Object.fromEntries(sheetNames.map(s => [s, s])),
+            inputValue: defaultSheet,
+            showCancelButton: true,
+            confirmButtonText: 'ถัดไป',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2563eb'
+          });
+          if (!chosen) return;
+          selectedSheet = chosen;
+        }
+
+        const ws = wb.Sheets[selectedSheet];
+        const rawRows = XLSX.utils.sheet_to_json(ws);
+        if (!rawRows.length) {
+          return Swal.fire('ไม่พบข้อมูล', `Sheet "${selectedSheet}" ไม่มีข้อมูลรายการ`, 'warning');
+        }
+
+        const targetColl = (selectedSheet.toLowerCase() === 'bom' || currentTab === 'bom') ? 'bom' : currentTab;
+
+        const confirmResult = await Swal.fire({
+          title: `นำเข้า ${rawRows.length.toLocaleString()} รายการเข้า "${targetColl}"?`,
+          html: `
+            <div class="text-left text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-3 space-y-1">
+              <p><b>📄 ไฟล์:</b> ${file.name}</p>
+              <p><b>📑 Sheet:</b> <span class="font-bold text-blue-600">${selectedSheet}</span></p>
+              <p><b>📊 จำนวนข้อมูล:</b> <span class="font-bold text-emerald-600">${rawRows.length.toLocaleString()}</span> แถว</p>
+              <p><b>🏷️ คอลัมน์ที่พบ:</b> <span class="font-mono text-slate-600">${Object.keys(rawRows[0]).join(', ')}</span></p>
+            </div>
+            <p class="text-xs text-slate-500">คุณต้องการนำเข้าข้อมูลนี้ลงใน Firebase Firestore หรือไม่?</p>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          showDenyButton: targetColl === 'bom',
+          confirmButtonText: targetColl === 'bom' ? '<i class="fas fa-sync-alt mr-1"></i> ล้างของเดิมแล้วนำเข้าใหม่ (Replace)' : 'ยืนยันนำเข้า',
+          denyButtonText: '<i class="fas fa-plus mr-1"></i> นำเข้าต่อท้าย (Append)',
+          cancelButtonText: 'ยกเลิก',
+          confirmButtonColor: '#e11d48',
+          denyButtonColor: '#059669',
+          cancelButtonColor: '#64748b'
+        });
+
+        if (!confirmResult.isConfirmed && !confirmResult.isDenied) return;
+        const shouldReplace = confirmResult.isConfirmed && targetColl === 'bom';
+
+        const loadingBox = document.getElementById('loadingBox');
+        if (loadingBox) loadingBox.classList.remove('hidden');
+
+        if (shouldReplace) {
+          const oldSnap = await db.collection(targetColl).get();
+          const delChunkSize = 450;
+          for (let i = 0; i < oldSnap.docs.length; i += delChunkSize) {
+            const chunk = oldSnap.docs.slice(i, i + delChunkSize);
+            const delBatch = db.batch();
+            chunk.forEach(d => delBatch.delete(d.ref));
+            await delBatch.commit();
+          }
+        }
+
+        const chunkSize = 450;
+        for (let i = 0; i < rawRows.length; i += chunkSize) {
+          const chunk = rawRows.slice(i, i + chunkSize);
+          const batch = db.batch();
+
+          chunk.forEach(r => {
+            const docRef = db.collection(targetColl).doc();
+            if (targetColl === 'bom') {
+              const req = parseFloat(r['Req/Kit'] ?? r.req_qty ?? r.req_per_kit ?? 0);
+              batch.set(docRef, {
+                type: String(r.Type || r.type || '').trim(),
+                material_id: String(r['Material ID'] || r.material_id || '').trim(),
+                req_qty: req,
+                req_per_kit: req
+              });
+            } else {
+              batch.set(docRef, r);
+            }
+          });
+
+          await batch.commit();
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'นำเข้าข้อมูลสำเร็จ!',
+          text: `นำเข้าข้อมูลทั้งหมด ${rawRows.length.toLocaleString()} รายการลงใน Collection "${targetColl}" เรียบร้อยแล้ว`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+
+        await loadAllData();
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการนำเข้าไฟล์',
+          text: err.message
+        });
+      } finally {
+        const loadingBox = document.getElementById('loadingBox');
+        if (loadingBox) loadingBox.classList.add('hidden');
+      }
+    }
+
+    // Initialize Auth on window load
     window.onload = checkAuthSession;
   </script>
 </body>
