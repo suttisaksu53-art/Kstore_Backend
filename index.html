@@ -16,10 +16,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
-  <!-- Firebase SDK (Compat Version) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     * { font-family: 'Sarabun', sans-serif; }
@@ -250,7 +248,7 @@
                 <i class="fas fa-user-shield mr-0.5"></i> ADMIN
               </span>
             </div>
-            <p class="text-[11px] text-slate-500">จัดการข้อมูล Firebase สดๆ &bull; เรียงลำดับ &bull; ค้นหาไว &bull; ลบทีละหลายรายการ &bull; เช็ค Quota</p>
+            <p class="text-[11px] text-slate-500">จัดการข้อมูล Supabase สดๆ &bull; เรียงลำดับ &bull; ค้นหาไว &bull; ลบทีละหลายรายการ &bull; เช็คโควต้า</p>
           </div>
         </div>
 
@@ -262,7 +260,7 @@
           </div>
 
           <!-- Connection Status -->
-          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700" title="Firestore Connected">
+          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700" title="Supabase Connected">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
             <span>Live DB</span>
           </div>
@@ -274,7 +272,7 @@
           </div>
 
           <!-- Action Buttons -->
-          <button onclick="refreshAllData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition" title="ดึงข้อมูลล่าสุดจาก Firebase">
+          <button onclick="refreshAllData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition" title="ดึงข้อมูลล่าสุดจาก Supabase">
             <i class="fas fa-sync-alt" id="refreshIcon"></i> รีเฟรช
           </button>
           <button onclick="triggerExcelImport()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="นำเข้าไฟล์ Excel (.xlsx) เข้าสู่ฐานข้อมูล">
@@ -444,8 +442,8 @@
               <span id="dashTodayTxTotal" class="font-bold text-emerald-400">0 รายการ</span>
             </div>
             <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">
-              <span class="text-slate-400 text-[11px]">โควตาลบ (Deletes):</span>
-              <span id="dashDailyDeletesText" class="font-bold text-rose-400">0 / 20,000</span>
+              <span class="text-slate-400 text-[11px]">การลบข้อมูล (Deletes):</span>
+              <span class="font-bold text-emerald-400">ไม่จำกัด (Unlimited)</span>
             </div>
             <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">
               <span class="text-slate-400 text-[11px]">DB Latency:</span>
@@ -464,7 +462,7 @@
                 <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
                   <i class="fas fa-chart-pie text-blue-600"></i> สัดส่วนข้อมูลในแต่ละ Collection
                 </h3>
-                <p class="text-[11px] text-slate-400">ขนาดความจุโดยประมาณของแต่ละตารางใน Firestore</p>
+                <p class="text-[11px] text-slate-400">สัดส่วนพื้นที่ของแต่ละตารางใน Supabase</p>
               </div>
               <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">By Size (KB)</span>
             </div>
@@ -498,7 +496,7 @@
           <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div>
               <h3 class="font-bold text-sm text-slate-800">แจกแจงรายละเอียดและขนาดความจุแต่ละ Collection</h3>
-              <p class="text-xs text-slate-400">ข้อมูลขนาดไบต์ (Bytes) โดยประมาณตามเกณฑ์โครงสร้าง Firestore Document</p>
+              <p class="text-xs text-slate-400">ข้อมูลขนาดโดยประมาณของแต่ละตารางในฐานข้อมูล Supabase PostgreSQL</p>
             </div>
             <span class="text-xs font-bold text-slate-500">6 Collections พร้อมใช้</span>
           </div>
@@ -567,7 +565,7 @@
           <!-- Loading Overlay -->
           <div id="loadingBox" class="absolute inset-0 bg-white/85 backdrop-blur-xs flex flex-col items-center justify-center z-20">
             <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="mt-3 text-xs font-bold text-slate-600">กำลังเชื่อมต่อข้อมูลสดจาก Firebase Cloud Firestore...</p>
+            <p class="mt-3 text-xs font-bold text-slate-600">กำลังเชื่อมต่อข้อมูลสดจาก Supabase Cloud Database...</p>
           </div>
 
           <!-- Scrollable Table -->
@@ -600,7 +598,7 @@
 
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-2.5 text-center text-xs text-slate-400">
-      Kstore Firebase Live Manager &bull; Real-time Connected to <code class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono font-bold">kstore-e7f22</code> &bull; กลุ่มวิจัยเคมีดิน กรมพัฒนาที่ดิน
+      Kstore Supabase Live Manager &bull; Connected to <code class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono font-bold">Supabase PostgreSQL</code> &bull; กลุ่มวิจัยเคมีดิน กรมพัฒนาที่ดิน
     </footer>
   </div>
 
@@ -634,7 +632,7 @@
           </div>
           <div>
             <h3 class="font-extrabold text-slate-900 text-sm sm:text-base" id="modalTitle">แก้ไขข้อมูล</h3>
-            <p class="text-[11px] text-slate-500" id="modalSubtitle">กำลังแก้ไขรายการใน Firestore</p>
+            <p class="text-[11px] text-slate-500" id="modalSubtitle">กำลังแก้ไขรายการใน Supabase</p>
           </div>
         </div>
         <button onclick="closeModal()" class="w-8 h-8 rounded-xl hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
@@ -649,7 +647,7 @@
       <div class="p-4 px-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-2.5">
         <button onclick="closeModal()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition">ยกเลิก</button>
         <button onclick="saveModalData()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition active:scale-95" id="btnSaveModal">
-          <i class="fas fa-save"></i> บันทึกลง Firebase
+          <i class="fas fa-save"></i> บันทึกลง Supabase
         </button>
       </div>
     </div>
@@ -657,24 +655,12 @@
 
   <!-- ================= 5. SCRIPT & LOGIC ================= -->
   <script>
-    // Firebase Configuration (Matching kstore.html)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCGoXviRd3Jbxpyd_JEU4kD2acHAIMlMV8",
-      authDomain: "kstore-e7f22.firebaseapp.com",
-      projectId: "kstore-e7f22",
-      storageBucket: "kstore-e7f22.firebasestorage.app",
-      messagingSenderId: "9565632832",
-      appId: "1:9565632832:web:6a5f010201a0d1c67362a5"
-    };
-
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-    try {
-      db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-    } catch(e) {}
+    // ==========================================
+    // ⚡ SUPABASE CLIENT INITIALIZATION
+    // ==========================================
+    const SUPABASE_URL = 'https://fowqvzmsfaftiohxqock.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvd3F2em1zZmFmdGlvaHhxb2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NTQzNjcsImV4cCI6MjA5OTMzMDM2N30.WqX-f4ou8d7h6UWpQ9MxtZq633vWnHTWpewtF1iCdV8';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Password MD5 Hash Helper (Matching Kstore system)
     function hashPassword(pass) {
@@ -785,6 +771,7 @@
     let currentFilteredRows = [];
     let editingDocId = null;
     let isAddMode = false;
+    let lastDbViewerRefreshTime = 0;
 
     // Charts references
     let chartBreakdownInstance = null;
@@ -852,15 +839,10 @@
         const passHash = hashPassword(passwordInput);
         const rawHash = (typeof CryptoJS !== 'undefined') ? CryptoJS.MD5(passwordInput).toString(CryptoJS.enc.Hex) : passwordInput;
 
-        let snap = await db.collection('users').where('username', '==', usernameInput).get();
-        if (snap.empty) {
-          snap = await db.collection('users').where('username', '==', uStr).get();
-        }
-        if (snap.empty) {
-          snap = await db.collection('users').get();
-        }
-        const userDoc = snap.docs.find(d => {
-          const u = d.data();
+        const { data: users, error } = await sb.from('users').select('*').ilike('username', usernameInput);
+        if (error) throw error;
+
+        const userDoc = (users || []).find(u => {
           const dbU = String(u.username || '').trim().toLowerCase();
           const dbP = String(u.password || '');
           return dbU === uStr && (dbP === passHash || dbP === rawHash || dbP === passwordInput);
@@ -870,34 +852,27 @@
           throw new Error('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
         }
 
-        const userData = userDoc.data();
-        if (String(userData.role || '').toLowerCase() !== 'admin') {
+        if (String(userDoc.role || '').toLowerCase() !== 'admin') {
           throw new Error('ขออภัย เฉพาะผู้ใช้งานระดับผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเข้าถึงได้');
         }
 
-        if (userData.status && userData.status !== 'approved') {
-          throw new Error('บัญชีของคุณยังไม่ได้รับการอนุมัติ (Status: ' + userData.status + ')');
+        if (userDoc.status && userDoc.status !== 'approved') {
+          throw new Error('บัญชีของคุณยังไม่ได้รับการอนุมัติ (Status: ' + userDoc.status + ')');
         }
 
-        currentAdminUser = {
-          user_id: userDoc.id,
-          username: userData.username,
-          fullname: userData.fullname || userData.username,
-          role: userData.role
-        };
+        currentAdminUser = userDoc;
         sessionStorage.setItem('kstore_db_manager_admin', JSON.stringify(currentAdminUser));
 
+        showAppView();
         Swal.fire({
           icon: 'success',
-          title: 'ยินดีต้อนรับเข้าสู่ระบบ',
-          text: `คุณ ${currentAdminUser.fullname} (Admin)`,
+          title: 'เข้าสู่ระบบสำเร็จ',
+          text: `ยินดีต้อนรับ ${currentAdminUser.fullname || currentAdminUser.username}`,
           timer: 1500,
           showConfirmButton: false
         });
-
-        showAppView();
       } catch (err) {
-        errMsg.innerText = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+        errMsg.innerText = err.message;
         errBox.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -968,12 +943,9 @@
     // ==========================================
     // 📊 QUOTA TRACKING & STORAGE ENGINE
     // ==========================================
-    const FIRESTORE_QUOTAS = {
-      storageMb: 1024,      // 1 GiB (1,024 MB) free Spark tier
-      dailyReads: 50000,    // 50,000 document reads / day
-      dailyWrites: 20000,   // 20,000 document writes / day
-      dailyDeletes: 20000,  // 20,000 document deletes / day
-      dailyBandwidthMb: 340 // 10 GiB / month ≈ 340 MB / day
+    const SUPABASE_QUOTAS = {
+      storageMb: 500,        // 500 MB free Supabase plan
+      monthlyBandwidthMb: 5000 // 5 GB (5,000 MB) / month
     };
 
     function getTodayKey() {
@@ -1031,7 +1003,7 @@
       }
     }
 
-    // --- LOAD A SINGLE COLLECTION (SMART ON-DEMAND LAZY LOADING) ---
+    // --- LOAD A SINGLE COLLECTION (VIA SUPABASE) ---
     async function loadCollectionData(collName, force = false) {
       if (!force && databaseData[collName] && databaseData[collName].length > 0) {
         return databaseData[collName];
@@ -1042,35 +1014,37 @@
 
       const startMs = performance.now();
       try {
-        let snap;
+        let query = sb.from(collName).select('*');
         if (['withdraw_history', 'import_history', 'log'].includes(collName)) {
-          try {
-            snap = await db.collection(collName).orderBy('timestamp', 'desc').limit(250).get();
-          } catch(e) {
-            snap = await db.collection(collName).limit(250).get();
-          }
-        } else {
-          snap = await db.collection(collName).get();
+          query = query.order('timestamp', { ascending: false }).limit(250);
         }
-        const docs = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
-        databaseData[collName] = docs;
+
+        const { data: docs, error } = await query;
+        if (error) throw error;
+
+        const formatted = (docs || []).map(d => ({
+          _docId: String(d.id || d._id || d.material_id || d.user_id || ''),
+          ...d
+        }));
+
+        databaseData[collName] = formatted;
 
         let bytes = 0;
-        docs.forEach(d => {
+        formatted.forEach(d => {
           bytes += (estimateDocSize(d) + 150);
         });
 
-        // Record Quota Op for loaded reads and egress
-        recordQuotaOp('reads', docs.length, bytes);
+        // Record Quota Op
+        recordQuotaOp('reads', formatted.length, bytes);
 
         const badge = document.getElementById(`count-${collName}`);
-        if (badge) badge.innerText = docs.length;
+        if (badge) badge.innerText = formatted.length;
 
         const elapsed = (performance.now() - startMs).toFixed(0);
         const latEl = document.getElementById('dashLatency');
         if (latEl) latEl.innerText = `~${elapsed}ms`;
 
-        return docs;
+        return formatted;
       } catch (err) {
         Swal.fire({
           icon: 'error',
@@ -1083,7 +1057,7 @@
       }
     }
 
-    // --- LOAD ALL DATA FROM FIRESTORE ---
+    // --- LOAD ALL DATA FROM SUPABASE ---
     async function loadAllData(force = false) {
       const loadingBox = document.getElementById('loadingBox');
       if (loadingBox) loadingBox.classList.remove('hidden');
@@ -1093,18 +1067,22 @@
       const startMs = performance.now();
       try {
         const collections = ['materials', 'withdraw_history', 'import_history', 'bom', 'users', 'log'];
-        const snaps = await Promise.all(collections.map(c => {
+        const results = await Promise.all(collections.map(c => {
+          let q = sb.from(c).select('*');
           if (['withdraw_history', 'import_history', 'log'].includes(c)) {
-            return db.collection(c).orderBy('timestamp', 'desc').limit(250).get().catch(() => db.collection(c).limit(250).get());
+            q = q.order('timestamp', { ascending: false }).limit(250);
           }
-          return db.collection(c).get();
+          return q;
         }));
 
         let totalLoadedReads = 0;
         let totalLoadedBytes = 0;
 
         collections.forEach((c, idx) => {
-          const docs = snaps[idx].docs.map(d => ({ _docId: d.id, ...d.data() }));
+          const docs = (results[idx].data || []).map(d => ({
+            _docId: String(d.id || d._id || d.material_id || d.user_id || ''),
+            ...d
+          }));
           databaseData[c] = docs;
           totalLoadedReads += docs.length;
           docs.forEach(d => {
@@ -1114,25 +1092,23 @@
           if (badge) badge.innerText = docs.length;
         });
 
-        // Record Quota Op for loaded reads and egress
         recordQuotaOp('reads', totalLoadedReads, totalLoadedBytes);
 
         const elapsed = (performance.now() - startMs).toFixed(0);
         const latEl = document.getElementById('dashLatency');
         if (latEl) latEl.innerText = `~${elapsed}ms`;
 
-        clearAllSelections();
         updateDashboardMetrics();
-
-        if (currentTab === 'dashboard') {
-          renderDashboard();
-        } else {
+        if (currentTab !== 'dashboard') {
           renderCurrentTable();
+        } else {
+          renderDashboard();
         }
       } catch (err) {
+        console.error('Failed to load all data', err);
         Swal.fire({
           icon: 'error',
-          title: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+          title: 'ไม่สามารถโหลดข้อมูลจาก Supabase ได้',
           text: err.message
         });
       } finally {
@@ -1141,36 +1117,43 @@
       }
     }
 
-    let lastDbViewerRefreshTime = 0;
     async function refreshAllData() {
       const now = Date.now();
-      if (now - lastDbViewerRefreshTime < 6000) {
-        Swal.fire({
-          icon: 'info',
-          title: 'ข้อมูลเป็นปัจจุบันแล้ว',
-          text: 'ระบบเพิ่งดึงข้อมูลล่าสุดเมื่อสักครู่ ไม่จำเป็นต้องกดรีเฟรชติดกันครับ',
-          timer: 1500,
-          showConfirmButton: false
-        });
-        return;
-      }
+      if (now - lastDbViewerRefreshTime < 800) return;
       lastDbViewerRefreshTime = now;
 
-      if (currentTab === 'dashboard') {
-        await loadAllData(true);
-      } else {
-        const icon = document.getElementById('refreshIcon');
-        if (icon) icon.classList.add('fa-spin');
-        await loadCollectionData(currentTab, true);
-        if (icon) icon.classList.remove('fa-spin');
-        renderCurrentTable();
-        updateDashboardMetrics();
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('fa-spin');
+
+      try {
+        if (currentTab === 'dashboard') {
+          await loadAllData(true);
+          Swal.fire({
+            icon: 'success',
+            title: 'รีเฟรชข้อมูลทั้งหมดสำเร็จ',
+            timer: 1000,
+            showConfirmButton: false
+          });
+        } else {
+          await loadCollectionData(currentTab, true);
+          renderCurrentTable();
+          updateDashboardMetrics();
+          const title = TABLE_CONFIGS[currentTab]?.title || currentTab;
+          Swal.fire({
+            icon: 'success',
+            title: `รีเฟรชข้อมูล "${title}" สำเร็จ`,
+            timer: 1000,
+            showConfirmButton: false
+          });
+        }
+      } catch (err) {
         Swal.fire({
-          icon: 'success',
-          title: `รีเฟรช ${currentTab} สำเร็จ`,
-          timer: 1000,
-          showConfirmButton: false
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาดในการรีเฟรช',
+          text: err.message
         });
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
       }
     }
 
@@ -1230,10 +1213,10 @@
         };
       });
 
-      // 1. Storage Metric (Firestore Stored Data: 1,024 MB Limit)
+      // 1. Storage Metric (Supabase 500 MB Limit)
       const usedKb = totalBytes / 1024;
       const usedMb = usedKb / 1024;
-      const freeTierMb = FIRESTORE_QUOTAS.storageMb; // 1024 MB
+      const freeTierMb = SUPABASE_QUOTAS.storageMb; // 500 MB
       const storagePercent = (usedMb / freeTierMb) * 100;
       const remainingStorageMb = Math.max(0, freeTierMb - usedMb);
 
@@ -1242,7 +1225,7 @@
       if (storageTextEl) storageTextEl.innerText = storageText;
 
       const storageRemEl = document.getElementById('dashStorageRemaining');
-      if (storageRemEl) storageRemEl.innerText = remainingStorageMb >= 1000 ? `${(remainingStorageMb/1024).toFixed(2)} GB` : `${remainingStorageMb.toFixed(1)} MB`;
+      if (storageRemEl) storageRemEl.innerText = `${remainingStorageMb.toFixed(1)} MB`;
 
       const storagePercentEl = document.getElementById('dashStoragePercent');
       if (storagePercentEl) {
@@ -1252,61 +1235,13 @@
 
       const storageBarEl = document.getElementById('dashStorageBar');
       if (storageBarEl) {
-        const visualWidth = Math.max(storagePercent * 3, 0.8);
+        const visualWidth = Math.max(storagePercent * 5, 0.5);
         storageBarEl.style.width = `${Math.min(visualWidth, 100)}%`;
       }
 
-      // 2. Daily Reads Metric (50,000 / day)
+      // 2. Bandwidth Egress (5,000 MB / month)
       const metrics = getDailyMetrics();
-      const readsLimit = FIRESTORE_QUOTAS.dailyReads;
-      const readsUsed = metrics.reads;
-      const readsRemaining = Math.max(0, readsLimit - readsUsed);
-      const readsPercent = (readsUsed / readsLimit) * 100;
-
-      const readsUsedEl = document.getElementById('dashDailyReadsUsedText');
-      if (readsUsedEl) readsUsedEl.innerText = `${readsUsed.toLocaleString()} ครั้ง`;
-
-      const readsRemEl = document.getElementById('dashDailyReadsRemaining');
-      if (readsRemEl) readsRemEl.innerText = `${readsRemaining.toLocaleString()} ครั้ง`;
-
-      const readsPercentEl = document.getElementById('dashDailyReadsPercent');
-      if (readsPercentEl) {
-        const pctStr = readsPercent < 0.01 && readsUsed > 0 ? '< 0.01%' : `${readsPercent.toFixed(2)}%`;
-        readsPercentEl.innerText = pctStr;
-      }
-
-      const readsBarEl = document.getElementById('dashDailyReadsBar');
-      if (readsBarEl) {
-        const visualReads = readsUsed > 0 ? Math.max(readsPercent, 0.8) : 0;
-        readsBarEl.style.width = `${Math.min(visualReads, 100)}%`;
-      }
-
-      // 3. Daily Writes Metric (20,000 / day)
-      const writesLimit = FIRESTORE_QUOTAS.dailyWrites;
-      const writesUsed = metrics.writes;
-      const writesRemaining = Math.max(0, writesLimit - writesUsed);
-      const writesPercent = (writesUsed / writesLimit) * 100;
-
-      const writesUsedEl = document.getElementById('dashDailyWritesUsedText');
-      if (writesUsedEl) writesUsedEl.innerText = `${writesUsed.toLocaleString()} ครั้ง`;
-
-      const writesRemEl = document.getElementById('dashDailyWritesRemaining');
-      if (writesRemEl) writesRemEl.innerText = `${writesRemaining.toLocaleString()} ครั้ง`;
-
-      const writesPercentEl = document.getElementById('dashDailyWritesPercent');
-      if (writesPercentEl) {
-        const pctStr = writesPercent < 0.01 && writesUsed > 0 ? '< 0.01%' : `${writesPercent.toFixed(2)}%`;
-        writesPercentEl.innerText = pctStr;
-      }
-
-      const writesBarEl = document.getElementById('dashDailyWritesBar');
-      if (writesBarEl) {
-        const visualWrites = writesUsed > 0 ? Math.max(writesPercent, 0.8) : 0;
-        writesBarEl.style.width = `${Math.min(visualWrites, 100)}%`;
-      }
-
-      // 4. Daily Bandwidth Egress (340 MB / day ≈ 10 GB / month)
-      const bandwidthLimitMb = FIRESTORE_QUOTAS.dailyBandwidthMb;
+      const bandwidthLimitMb = SUPABASE_QUOTAS.monthlyBandwidthMb;
       const bandwidthUsedKb = metrics.bandwidthBytes / 1024;
       const bandwidthUsedMb = bandwidthUsedKb / 1024;
       const bandwidthRemainingMb = Math.max(0, bandwidthLimitMb - bandwidthUsedMb);
@@ -1332,37 +1267,17 @@
         bwBarEl.style.width = `${Math.min(visualBw, 100)}%`;
       }
 
-      // 5. Activity & Usage Density Panel
+      // 3. Activity & Usage Density Panel
       const todayTxEl = document.getElementById('dashTodayTxTotal');
-      if (todayTxEl) todayTxEl.innerText = `${metrics.transactions.toLocaleString()} รายการ`;
+      if (todayTxEl) todayTxEl.innerText = `${totalDocs.toLocaleString()} รายการ`;
 
-      const deletesLimit = FIRESTORE_QUOTAS.dailyDeletes;
-      const deletesEl = document.getElementById('dashDailyDeletesText');
-      if (deletesEl) deletesEl.innerText = `${metrics.deletes.toLocaleString()} / ${deletesLimit.toLocaleString()}`;
-
-      // Max load factor among all metrics
-      const maxRatio = Math.max(readsPercent, writesPercent, (metrics.deletes / deletesLimit) * 100, bandwidthPercent);
       const badgeEl = document.getElementById('dashDensityBadge');
       const summaryEl = document.getElementById('dashDensitySummary');
 
       if (badgeEl && summaryEl) {
-        if (maxRatio < 15) {
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> เบาบาง / คล่องตัวสูง';
-          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงสุด <b>${maxRatio < 0.1 ? '< 0.1%' : maxRatio.toFixed(1) + '%'}</b> ฐานข้อมูลปลอดภัยและตอบสนองฉับไว`;
-        } else if (maxRatio < 50) {
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center gap-1';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> ปานกลาง / ใช้งานปกติ';
-          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงสุด <b>${maxRatio.toFixed(1)}%</b> การใช้งานปกติ มีความเสถียรภาพ`;
-        } else if (maxRatio < 80) {
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> ค่อนข้างหนาแน่น / ควรเฝ้าระวัง';
-          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; ใช้อัตราโควตาไปแล้ว <b>${maxRatio.toFixed(1)}%</b> แนะนำหลีกเลี่ยงการ Refresh หรือ Import บ่อยเกินจำเป็น`;
-        } else {
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> หนาแน่นวิกฤต / ใกล้เต็มโควตา';
-          summaryEl.innerHTML = `วันนี้มีธุรกรรมรวม <b>${metrics.transactions.toLocaleString()}</b> รายการ &bull; อัตราการใช้โควตาสูงถึง <b>${maxRatio.toFixed(1)}%</b> ใกล้ขีดจำกัดรายวันของ Firestore Spark Plan`;
-        }
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1';
+        badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ออนไลน์ปกติ / เสถียรภาพสูง';
+        summaryEl.innerHTML = `ฐานข้อมูลมีข้อมูลรวม <b>${totalDocs.toLocaleString()}</b> แถว &bull; ใช้พื้นที่ไป <b>${storageText}</b> (เพียง <b>${storagePercent < 0.01 ? '< 0.01%' : storagePercent.toFixed(2) + '%'}</b>) &bull; โควตาอ่านเขียน <b>Unlimited</b>`;
       }
 
       // Populate Table Body in Dashboard
@@ -1779,32 +1694,44 @@
       const passHash = hashPassword(passStr);
       const rawHash = (typeof CryptoJS !== 'undefined') ? CryptoJS.MD5(passStr).toString(CryptoJS.enc.Hex) : passStr;
 
+      // 1. Fast check against currentAdminUser in memory
+      if (currentAdminUser && currentAdminUser.password) {
+        const curP = String(currentAdminUser.password);
+        if (curP === passHash || curP === rawHash || curP === passStr) return true;
+      }
+
       try {
         const adminUsername = currentAdminUser?.username;
         if (adminUsername) {
-          const snap = await db.collection('users').where('username', '==', adminUsername).get();
-          if (!snap.empty) {
-            const u = snap.docs[0].data();
+          const { data: users, error } = await sb.from('users').select('*').ilike('username', adminUsername);
+          if (!error && users && users.length > 0) {
+            const u = users[0];
             const dbP = String(u.password || '');
-            if (dbP === passHash || dbP === rawHash || dbP === passStr) return true;
+            if (dbP === passHash || dbP === rawHash || dbP === passStr) {
+              currentAdminUser = u;
+              return true;
+            }
           }
         }
 
-        // Fallback: check cached databaseData.users or fetch if not present
+        // Fallback: check cached databaseData.users or fetch from Supabase
         let users = databaseData.users;
         if (!users || !users.length) {
-          const snap = await db.collection('users').get();
-          users = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
-          databaseData.users = users;
+          const { data: fetchedUsers, error } = await sb.from('users').select('*');
+          if (!error && fetchedUsers) {
+            users = fetchedUsers.map(d => ({ _docId: String(d.id || d.user_id || ''), ...d }));
+            databaseData.users = users;
+          }
         }
 
-        const anyAdmin = users.find(u => {
-          const role = String(u.role || '').toLowerCase();
-          const dbP = String(u.password || '');
-          return role === 'admin' && (dbP === passHash || dbP === rawHash || dbP === passStr);
-        });
-
-        if (anyAdmin) return true;
+        if (users && users.length) {
+          const anyAdmin = users.find(u => {
+            const role = String(u.role || '').toLowerCase();
+            const dbP = String(u.password || '');
+            return role === 'admin' && (dbP === passHash || dbP === rawHash || dbP === passStr);
+          });
+          if (anyAdmin) return true;
+        }
       } catch (err) {
         console.error('Password verification error:', err);
       }
@@ -1823,7 +1750,7 @@
         title: `ยืนยันการลบ ${count.toLocaleString()} รายการ`,
         html: `
           <div class="text-left text-xs text-slate-600 space-y-2 mb-3">
-            <p>คุณกำลังจะลบข้อมูลจำนวน <b class="text-slate-800">${count.toLocaleString()} แถว</b> ออกจาก Collection <b>"${cfg.title}"</b> ใน Firebase โดยตรง</p>
+            <p>คุณกำลังจะลบข้อมูลจำนวน <b class="text-slate-800">${count.toLocaleString()} แถว</b> ออกจากตาราง <b>"${cfg.title}"</b> ใน Supabase โดยตรง</p>
             ${filterNotice}
             <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold flex items-start gap-2">
               <i class="fas fa-exclamation-triangle text-rose-500 mt-0.5 text-sm shrink-0"></i>
@@ -1877,16 +1804,12 @@
 
       try {
         const idList = Array.from(selectedDocIds);
-        // Firestore batch max 500 ops per commit
-        const chunkSize = 450;
+        // Supabase batch delete in chunks
+        const chunkSize = 100;
         for (let i = 0; i < idList.length; i += chunkSize) {
           const chunk = idList.slice(i, i + chunkSize);
-          const batch = db.batch();
-          chunk.forEach(id => {
-            const docRef = db.collection(currentTab).doc(id);
-            batch.delete(docRef);
-          });
-          await batch.commit();
+          const { error } = await sb.from(currentTab).delete().in('id', chunk);
+          if (error) throw error;
         }
 
         Swal.fire({
@@ -1933,7 +1856,7 @@
 
       try {
         document.getElementById('loadingBox').classList.remove('hidden');
-        await db.collection(currentTab).doc(docId).delete();
+        await sb.from(currentTab).delete().eq("id", docId);
         selectedDocIds.delete(docId);
         
         // Record Delete Quota
@@ -2131,18 +2054,20 @@
           updateData.req_per_kit = updateData.req_qty;
         }
 
-        updateData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+        updateData.updated_at = new Date().toISOString();
 
         if (isAddMode) {
-          let customId = null;
-          if (cfg.idKey && updateData[cfg.idKey]) {
-            customId = String(updateData[cfg.idKey]).trim();
+          if (currentTab === 'materials') {
+            updateData.id = String(updateData.material_id || ('M' + Date.now())).trim();
+          } else if (currentTab === 'users') {
+            updateData.id = String(updateData.user_id || ('U' + Date.now())).trim();
+          } else if (currentTab === 'settings') {
+            updateData.id = 'general';
           }
-          if (customId) {
-            await db.collection(currentTab).doc(customId).set(updateData);
-          } else {
-            await db.collection(currentTab).add(updateData);
-          }
+          // For serial tables (bom, withdraw_history, import_history, log), do not set id so postgres generates it
+          const { error } = await sb.from(currentTab).insert(updateData);
+          if (error) throw error;
+
           Swal.fire({
             icon: 'success',
             title: 'เพิ่มรายการสำเร็จ',
@@ -2150,7 +2075,9 @@
             showConfirmButton: false
           });
         } else {
-          await db.collection(currentTab).doc(editingDocId).set(updateData, { merge: true });
+          const { error } = await sb.from(currentTab).update(updateData).eq('id', editingDocId);
+          if (error) throw error;
+
           Swal.fire({
             icon: 'success',
             title: 'บันทึกการแก้ไขสำเร็จ',
@@ -2272,38 +2199,253 @@
       }
     }
 
+    // Helper: Parse array fields (like permissions, material type)
+    function parseArrayField(val) {
+      if (!val && val !== 0) return [];
+      if (Array.isArray(val)) return val.map(s => String(s).trim()).filter(Boolean);
+      const str = String(val).trim();
+      if (!str) return [];
+      if (str.startsWith('[') && str.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) return parsed.map(s => String(s).trim()).filter(Boolean);
+        } catch (_) {}
+      }
+      return str.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    // Helper: Parse clean string (handles '["pH Test Kit"]' string from Excel)
+    function parseCleanTypeString(val) {
+      if (!val && val !== 0) return '';
+      if (Array.isArray(val)) return val.join(', ');
+      let str = String(val).trim();
+      if (str.startsWith('["') && str.endsWith('"]')) {
+        try {
+          const p = JSON.parse(str);
+          if (Array.isArray(p)) return p.join(', ');
+        } catch (_) {}
+      }
+      return str;
+    }
+
+    // Helper: Parse date from Excel
+    function parseExcelDate(val) {
+      if (!val && val !== 0) return null;
+      if (val instanceof Date) return val.toISOString();
+      if (typeof val === 'number') {
+        const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+        return isNaN(d.getTime()) ? null : d.toISOString();
+      }
+      const s = String(val).trim();
+      return s || null;
+    }
+
+    // Helper: Resolve target table key from sheet name or tab
+    function resolveTargetTable(sheetName, activeTab) {
+      const s = String(sheetName || '').trim().toLowerCase().replace(/[\s\-_]/g, '');
+      const validKeys = Object.keys(TABLE_CONFIGS);
+      for (const k of validKeys) {
+        const cleanK = k.toLowerCase().replace(/[\s\-_]/g, '');
+        const cleanTitle = (TABLE_CONFIGS[k].title || '').toLowerCase().replace(/[\s\-_]/g, '');
+        if (s === cleanK || s === cleanTitle) return k;
+      }
+      if (activeTab && validKeys.includes(activeTab)) return activeTab;
+      return null;
+    }
+
+    // Helper: Map a single Excel row to Supabase table schema
+    function mapExcelRowToDatabase(targetColl, r, existingPassMap) {
+      if (targetColl === 'materials') {
+        const mid = String(r['รหัสวัสดุ'] ?? r.material_id ?? r.id ?? ('M' + Date.now())).trim();
+        const pVal = r['ปักหมุด'] ?? r.pinned;
+        const pinned = (pVal === true || pVal === 'true' || pVal === 1 || pVal === '1' || String(pVal).toLowerCase() === 'true');
+        return {
+          id: mid,
+          material_id: mid,
+          name: String(r['ชื่อวัสดุ'] ?? r.name ?? '').trim(),
+          pinned: pinned,
+          qty: parseFloat(r['ยอดคงเหลือ'] ?? r.qty ?? 0) || 0,
+          units: String(r['หน่วย'] ?? r.units ?? '').trim(),
+          price: parseFloat(r['ราคาต่อหน่วย'] ?? r.price ?? 0) || 0,
+          category: String(r['หมวดหมู่'] ?? r.category ?? '').trim(),
+          location: String(r['สถานที่จัดเก็บ'] ?? r.location ?? '').trim(),
+          type: parseArrayField(r['ประเภทชุดตรวจ'] ?? r.type),
+          brand: String(r['ยี่ห้อ (Brand)'] ?? r['ยี่ห้อ'] ?? r.brand ?? '').trim(),
+          remark: String(r['หมายเหตุ'] ?? r.remark ?? '').trim(),
+          last_import_date: parseExcelDate(r['นำเข้าล่าสุด'] ?? r.last_import_date),
+          last_withdraw_date: parseExcelDate(r['เบิกล่าสุด'] ?? r.last_withdraw_date),
+          image_url: String(r['รูปภาพ'] ?? r.image_url ?? '').trim(),
+          updated_at: new Date().toISOString()
+        };
+      }
+
+      if (targetColl === 'withdraw_history') {
+        return {
+          timestamp: parseExcelDate(r['วัน-เวลาที่เบิก'] ?? r.timestamp) || new Date().toISOString(),
+          material_id: String(r['รหัสวัสดุ'] ?? r.material_id ?? '').trim(),
+          material_name: String(r['ชื่อวัสดุ'] ?? r.material_name ?? '').trim(),
+          qty: parseFloat(r['จำนวนที่เบิก'] ?? r.qty ?? 0) || 0,
+          user_name: String(r['ผู้ทำรายการ'] ?? r.user_name ?? '').trim(),
+          ref_doc: String(r['เอกสารอ้างอิง'] ?? r.ref_doc ?? '').trim(),
+          type: parseCleanTypeString(r['ประเภท'] ?? r.type ?? ''),
+          action_type: String(r['Action'] ?? r.action_type ?? 'withdraw').trim()
+        };
+      }
+
+      if (targetColl === 'import_history') {
+        return {
+          timestamp: parseExcelDate(r['วัน-เวลาที่นำเข้า'] ?? r.timestamp) || new Date().toISOString(),
+          material_id: String(r['รหัสวัสดุ'] ?? r.material_id ?? '').trim(),
+          material_name: String(r['ชื่อวัสดุ'] ?? r.material_name ?? '').trim(),
+          qty: parseFloat(r['จำนวนที่นำเข้า'] ?? r.qty ?? 0) || 0,
+          user_name: String(r['ผู้ทำรายการ'] ?? r.user_name ?? '').trim(),
+          ref_doc: String(r['เอกสารอ้างอิง'] ?? r.ref_doc ?? '').trim(),
+          type: parseCleanTypeString(r['ประเภท'] ?? r.type ?? ''),
+          action_type: String(r['Action'] ?? r.action_type ?? 'import').trim()
+        };
+      }
+
+      if (targetColl === 'bom') {
+        const req = parseFloat(r['จำนวนต่อชุด'] ?? r['Req/Kit'] ?? r.req_qty ?? r.req_per_kit ?? 0) || 0;
+        return {
+          type: String(r['ประเภทชุดตรวจ'] ?? r.Type ?? r.type ?? '').trim(),
+          material_id: String(r['รหัสวัสดุ'] ?? r['Material ID'] ?? r.material_id ?? '').trim(),
+          req_qty: req,
+          req_per_kit: req
+        };
+      }
+
+      if (targetColl === 'users') {
+        const uid = String(r['User ID'] ?? r.user_id ?? r.id ?? ('U' + Date.now())).trim();
+        const uname = String(r['ชื่อผู้ใช้ (Username)'] ?? r['ชื่อผู้ใช้'] ?? r.username ?? '').trim();
+        const role = String(r['ระดับ'] ?? r.role ?? 'user').trim().toLowerCase();
+        const status = String(r['สถานะ'] ?? r.status ?? 'approved').trim().toLowerCase();
+        const rawPass = r['รหัสผ่าน'] ?? r.password;
+        let pass = '';
+        if (rawPass) {
+          pass = String(rawPass).startsWith('MD5_') ? String(rawPass) : hashPassword(rawPass);
+        } else if (existingPassMap && existingPassMap[uname.toLowerCase()]) {
+          pass = existingPassMap[uname.toLowerCase()];
+        } else {
+          pass = hashPassword('1234');
+        }
+
+        return {
+          id: uid,
+          user_id: uid,
+          username: uname,
+          fullname: String(r['ชื่อ-นามสกุล'] ?? r.fullname ?? '').trim(),
+          group: String(r['กลุ่มงาน'] ?? r.group ?? '').trim(),
+          role: role || 'user',
+          status: status || 'approved',
+          permissions: parseArrayField(r['สิทธิ์การใช้งาน'] ?? r.permissions),
+          password: pass
+        };
+      }
+
+      if (targetColl === 'log') {
+        return {
+          timestamp: parseExcelDate(r['วัน-เวลาเข้าสู่ระบบ'] ?? r.timestamp) || new Date().toISOString(),
+          user_id: String(r['User ID'] ?? r.user_id ?? '').trim(),
+          username: String(r['ชื่อผู้ใช้'] ?? r.username ?? '').trim(),
+          fullname: String(r['ชื่อ-นามสกุล'] ?? r.fullname ?? '').trim(),
+          role: String(r['ระดับ'] ?? r.role ?? 'user').trim()
+        };
+      }
+
+      return r;
+    }
+
+    // Helper: Execute Import for a specific table
+    async function executeTableImport(targetColl, rawRows, isReplaceMode) {
+      // Filter out completely blank rows
+      const validRows = rawRows.filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''));
+      if (!validRows.length) return 0;
+
+      // Existing pass map for users to prevent password loss
+      let existingPassMap = {};
+      if (targetColl === 'users') {
+        try {
+          const { data: curUsers } = await sb.from('users').select('username, password');
+          (curUsers || []).forEach(u => {
+            if (u.username && u.password) existingPassMap[u.username.toLowerCase()] = u.password;
+          });
+        } catch (_) {}
+      }
+
+      const formattedRows = validRows.map(r => mapExcelRowToDatabase(targetColl, r, existingPassMap));
+
+      // 1. If Replace Mode, delete existing rows first
+      if (isReplaceMode) {
+        if (['materials', 'users', 'settings'].includes(targetColl)) {
+          const { error: delErr } = await sb.from(targetColl).delete().neq('id', '___non_existent_id___');
+          if (delErr) throw delErr;
+        } else {
+          const { error: delErr } = await sb.from(targetColl).delete().gt('id', -999999);
+          if (delErr) throw delErr;
+        }
+      }
+
+      // 2. Insert or Upsert rows in chunks of 100
+      const chunkSize = 100;
+      for (let i = 0; i < formattedRows.length; i += chunkSize) {
+        const chunk = formattedRows.slice(i, i + chunkSize);
+        if (['materials', 'users'].includes(targetColl)) {
+          if (isReplaceMode) {
+            const { error: batchErr } = await sb.from(targetColl).insert(chunk);
+            if (batchErr) throw batchErr;
+          } else {
+            // Append mode: upsert to prevent unique ID collision
+            const { error: batchErr } = await sb.from(targetColl).upsert(chunk, { onConflict: 'id' });
+            if (batchErr) throw batchErr;
+          }
+        } else {
+          // Serial integer ID tables: bom, withdraw_history, import_history, log
+          const { error: batchErr } = await sb.from(targetColl).insert(chunk);
+          if (batchErr) throw batchErr;
+        }
+      }
+
+      // Record quota
+      recordQuotaOp('writes', formattedRows.length, formattedRows.length * 350);
+      return formattedRows.length;
+    }
+
     async function handleExcelFileUpload(input) {
       const file = input.files?.[0];
       if (!file) return;
 
       try {
         const data = await file.arrayBuffer();
-        const wb = XLSX.read(data, { type: 'array' });
+        const wb = XLSX.read(data, { type: 'array', cellDates: true });
         const sheetNames = wb.SheetNames;
 
         if (!sheetNames || sheetNames.length === 0) {
           return Swal.fire('ไม่พบ Sheet', 'ไฟล์ Excel ไม่มี Sheet ข้อมูลใดๆ', 'error');
         }
 
-        // Auto select sheet based on currentTab
+        // Auto determine default sheet
         let defaultSheet = sheetNames[0];
-        if (currentTab === 'bom') {
-          const match = sheetNames.find(s => s.toLowerCase() === 'bom');
-          if (match) defaultSheet = match;
-        } else if (currentTab === 'materials') {
-          const match = sheetNames.find(s => s.toLowerCase() === 'materials');
-          if (match) defaultSheet = match;
-        } else if (currentTab === 'users') {
-          const match = sheetNames.find(s => s.toLowerCase() === 'users');
+        const validKeys = Object.keys(TABLE_CONFIGS);
+        if (validKeys.includes(currentTab)) {
+          const match = sheetNames.find(s => resolveTargetTable(s) === currentTab);
           if (match) defaultSheet = match;
         }
 
         let selectedSheet = defaultSheet;
         if (sheetNames.length > 1) {
+          const sheetOptions = {};
+          sheetNames.forEach(s => {
+            const resolved = resolveTargetTable(s);
+            const label = resolved ? `${s} ➔ ตาราง ${TABLE_CONFIGS[resolved]?.title || resolved}` : s;
+            sheetOptions[s] = label;
+          });
+
           const { value: chosen } = await Swal.fire({
             title: 'เลือก Sheet ที่ต้องการนำเข้า',
+            text: `พบ ${sheetNames.length} Sheet ในไฟล์ "${file.name}"`,
             input: 'select',
-            inputOptions: Object.fromEntries(sheetNames.map(s => [s, s])),
+            inputOptions: sheetOptions,
             inputValue: defaultSheet,
             showCancelButton: true,
             confirmButtonText: 'ถัดไป',
@@ -2315,28 +2457,62 @@
         }
 
         const ws = wb.Sheets[selectedSheet];
-        const rawRows = XLSX.utils.sheet_to_json(ws);
+        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
         if (!rawRows.length) {
           return Swal.fire('ไม่พบข้อมูล', `Sheet "${selectedSheet}" ไม่มีข้อมูลรายการ`, 'warning');
         }
 
-        const targetColl = (selectedSheet.toLowerCase() === 'bom' || currentTab === 'bom') ? 'bom' : currentTab;
+        // Determine target table
+        let targetColl = resolveTargetTable(selectedSheet, currentTab);
+        if (!targetColl || !TABLE_CONFIGS[targetColl]) {
+          const tableOptions = {};
+          validKeys.forEach(k => {
+            tableOptions[k] = `${TABLE_CONFIGS[k].title} (${TABLE_CONFIGS[k].desc})`;
+          });
+          const { value: userPick } = await Swal.fire({
+            title: 'เลือกตารางปลายทางในฐานข้อมูล',
+            text: `ต้องการนำเข้าข้อมูลจาก Sheet "${selectedSheet}" ลงในตารางใด?`,
+            input: 'select',
+            inputOptions: tableOptions,
+            inputValue: validKeys.includes(currentTab) ? currentTab : 'materials',
+            showCancelButton: true,
+            confirmButtonText: 'ถัดไป',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2563eb'
+          });
+          if (!userPick) return;
+          targetColl = userPick;
+        }
 
+        const cfg = TABLE_CONFIGS[targetColl];
+        const previewCols = Object.keys(rawRows[0] || {}).slice(0, 8).join(', ');
+
+        // Ask User: Replace vs Append
         const confirmResult = await Swal.fire({
-          title: `นำเข้า ${rawRows.length.toLocaleString()} รายการเข้า "${targetColl}"?`,
+          title: `นำเข้าข้อมูลลงตาราง "${cfg.title}"`,
           html: `
-            <div class="text-left text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-3 space-y-1">
+            <div class="text-left text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-3 space-y-1.5">
+              <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span class="text-slate-500">ตารางปลายทาง:</span>
+                <span class="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">${cfg.title} (${cfg.desc})</span>
+              </div>
               <p><b>📄 ไฟล์:</b> ${file.name}</p>
-              <p><b>📑 Sheet:</b> <span class="font-bold text-blue-600">${selectedSheet}</span></p>
-              <p><b>📊 จำนวนข้อมูล:</b> <span class="font-bold text-emerald-600">${rawRows.length.toLocaleString()}</span> แถว</p>
-              <p><b>🏷️ คอลัมน์ที่พบ:</b> <span class="font-mono text-slate-600">${Object.keys(rawRows[0]).join(', ')}</span></p>
+              <p><b>📑 Sheet:</b> <span class="font-bold text-slate-700">${selectedSheet}</span></p>
+              <p><b>📊 จำนวนข้อมูลในไฟล์:</b> <span class="font-bold text-emerald-600 text-sm">${rawRows.length.toLocaleString()}</span> แถว</p>
+              <p class="text-[11px] text-slate-400 truncate"><b>🏷️ คอลัมน์ที่ตรวจพบ:</b> ${previewCols}</p>
             </div>
-            <p class="text-xs text-slate-500">คุณต้องการนำเข้าข้อมูลนี้ลงใน Firebase Firestore หรือไม่?</p>
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-left text-xs space-y-1 text-amber-900 mb-2">
+              <p class="font-bold flex items-center gap-1.5 text-amber-800">
+                <i class="fas fa-question-circle text-amber-600"></i> เลือกรูปแบบการนำเข้าที่ต้องการ:
+              </p>
+              <p>🔴 <b>แทนที่ข้อมูลเดิม (Replace):</b> ล้างข้อมูลเก่าในตารางนี้ออกทั้งหมด แล้วนำเข้าใหม่</p>
+              <p>🟢 <b>นำเข้าต่อท้าย (Append):</b> คงข้อมูลเดิมไว้ และเพิ่มข้อมูลจากไฟล์นี้ต่อท้าย</p>
+            </div>
           `,
           icon: 'question',
           showCancelButton: true,
-          showDenyButton: targetColl === 'bom',
-          confirmButtonText: targetColl === 'bom' ? '<i class="fas fa-sync-alt mr-1"></i> ล้างของเดิมแล้วนำเข้าใหม่ (Replace)' : 'ยืนยันนำเข้า',
+          showDenyButton: true,
+          confirmButtonText: '<i class="fas fa-sync-alt mr-1"></i> แทนที่ข้อมูลเดิม (Replace)',
           denyButtonText: '<i class="fas fa-plus mr-1"></i> นำเข้าต่อท้าย (Append)',
           cancelButtonText: 'ยกเลิก',
           confirmButtonColor: '#e11d48',
@@ -2345,52 +2521,57 @@
         });
 
         if (!confirmResult.isConfirmed && !confirmResult.isDenied) return;
-        const shouldReplace = confirmResult.isConfirmed && targetColl === 'bom';
+        const isReplaceMode = confirmResult.isConfirmed;
+
+        // If Replace Mode: verify admin password for safety
+        if (isReplaceMode) {
+          const { value: adminPass, isConfirmed: passConfirmed } = await Swal.fire({
+            title: `ยืนยันแทนที่ข้อมูลตาราง "${cfg.title}"`,
+            html: `
+              <div class="text-left text-xs text-slate-600 space-y-2 mb-2">
+                <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold flex items-start gap-2">
+                  <i class="fas fa-exclamation-triangle text-rose-500 mt-0.5 text-sm shrink-0"></i>
+                  <span>คำเตือน: ข้อมูลเดิมทั้งหมดในตาราง <b>"${cfg.title}"</b> จะถูกลบและแทนที่ด้วยข้อมูลจากไฟล์ Excel นี้</span>
+                </div>
+                <p class="font-bold text-slate-700 pt-1 flex items-center gap-1.5">
+                  <i class="fas fa-key text-amber-500"></i> กรุณากรอกรหัสผ่าน Admin เพื่อยืนยัน:
+                </p>
+              </div>
+            `,
+            input: 'password',
+            inputPlaceholder: 'กรอกรหัสผ่าน Admin',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'ยืนยันล้างและแทนที่ข้อมูล',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: async (password) => {
+              if (!password || !password.trim()) {
+                Swal.showValidationMessage('กรุณากรอกรหัสผ่าน Admin');
+                return false;
+              }
+              const isValid = await verifyAdminPassword(password.trim());
+              if (!isValid) {
+                Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                return false;
+              }
+              return true;
+            }
+          });
+          if (!passConfirmed) return;
+        }
 
         const loadingBox = document.getElementById('loadingBox');
         if (loadingBox) loadingBox.classList.remove('hidden');
 
-        if (shouldReplace) {
-          const oldSnap = await db.collection(targetColl).get();
-          const delChunkSize = 450;
-          for (let i = 0; i < oldSnap.docs.length; i += delChunkSize) {
-            const chunk = oldSnap.docs.slice(i, i + delChunkSize);
-            const delBatch = db.batch();
-            chunk.forEach(d => delBatch.delete(d.ref));
-            await delBatch.commit();
-          }
-        }
+        const importedCount = await executeTableImport(targetColl, rawRows, isReplaceMode);
 
-        const chunkSize = 450;
-        for (let i = 0; i < rawRows.length; i += chunkSize) {
-          const chunk = rawRows.slice(i, i + chunkSize);
-          const batch = db.batch();
-
-          chunk.forEach(r => {
-            const docRef = db.collection(targetColl).doc();
-            if (targetColl === 'bom') {
-              const req = parseFloat(r['Req/Kit'] ?? r.req_qty ?? r.req_per_kit ?? 0);
-              batch.set(docRef, {
-                type: String(r.Type || r.type || '').trim(),
-                material_id: String(r['Material ID'] || r.material_id || '').trim(),
-                req_qty: req,
-                req_per_kit: req
-              });
-            } else {
-              batch.set(docRef, r);
-            }
-          });
-
-          await batch.commit();
-        }
-
-        // Record Write Quota for batch Excel import
-        recordQuotaOp('writes', rawRows.length, rawRows.length * 400);
-
+        const modeText = isReplaceMode ? 'แทนที่ข้อมูลเดิมเรียบร้อยแล้ว' : 'นำเข้าต่อท้ายข้อมูลเดิมเรียบร้อยแล้ว';
         Swal.fire({
           icon: 'success',
           title: 'นำเข้าข้อมูลสำเร็จ!',
-          text: `นำเข้าข้อมูลทั้งหมด ${rawRows.length.toLocaleString()} รายการลงใน Collection "${targetColl}" เรียบร้อยแล้ว`,
+          text: `นำเข้าข้อมูลทั้งหมด ${importedCount.toLocaleString()} รายการลงในตาราง "${cfg.title}" (${modeText})`,
           timer: 2000,
           showConfirmButton: false
         });
