@@ -1042,7 +1042,16 @@
 
       const startMs = performance.now();
       try {
-        const snap = await db.collection(collName).get();
+        let snap;
+        if (['withdraw_history', 'import_history', 'log'].includes(collName)) {
+          try {
+            snap = await db.collection(collName).orderBy('timestamp', 'desc').limit(250).get();
+          } catch(e) {
+            snap = await db.collection(collName).limit(250).get();
+          }
+        } else {
+          snap = await db.collection(collName).get();
+        }
         const docs = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
         databaseData[collName] = docs;
 
@@ -1084,7 +1093,12 @@
       const startMs = performance.now();
       try {
         const collections = ['materials', 'withdraw_history', 'import_history', 'bom', 'users', 'log'];
-        const snaps = await Promise.all(collections.map(c => db.collection(c).get()));
+        const snaps = await Promise.all(collections.map(c => {
+          if (['withdraw_history', 'import_history', 'log'].includes(c)) {
+            return db.collection(c).orderBy('timestamp', 'desc').limit(250).get().catch(() => db.collection(c).limit(250).get());
+          }
+          return db.collection(c).get();
+        }));
 
         let totalLoadedReads = 0;
         let totalLoadedBytes = 0;
@@ -1127,7 +1141,21 @@
       }
     }
 
+    let lastDbViewerRefreshTime = 0;
     async function refreshAllData() {
+      const now = Date.now();
+      if (now - lastDbViewerRefreshTime < 6000) {
+        Swal.fire({
+          icon: 'info',
+          title: 'ข้อมูลเป็นปัจจุบันแล้ว',
+          text: 'ระบบเพิ่งดึงข้อมูลล่าสุดเมื่อสักครู่ ไม่จำเป็นต้องกดรีเฟรชติดกันครับ',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        return;
+      }
+      lastDbViewerRefreshTime = now;
+
       if (currentTab === 'dashboard') {
         await loadAllData(true);
       } else {
