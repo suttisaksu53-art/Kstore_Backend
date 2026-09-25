@@ -149,24 +149,33 @@
           document.body.appendChild(overlay);
         } else {
           overlay.classList.remove('hidden');
+          overlay.style.display = 'flex';
         }
       }
 
       function hideDevToolsLock() {
         const overlay = document.getElementById('devtoolsLockOverlay');
-        if (overlay) overlay.classList.add('hidden');
+        if (overlay) {
+          overlay.classList.add('hidden');
+          overlay.style.display = 'none';
+        }
       }
 
       setInterval(function() {
         if (devtoolsAllowed) return;
-        const threshold = 180;
+        // เกณฑ์ตรวจจับเฉพาะเมื่อเปิด DevTools เท่านั้น (ไม่รบกวน Bookmarks Bar, Titlebar, หรือ Display Scaling ของ Windows):
+        // 1. DevTools ด้านข้าง (Right/Left Dock) จะกินพื้นที่กว้างอย่างน้อย 280-350px (ปกติขอบข้างหน้าต่างไม่เกิน 20px)
+        // 2. DevTools ด้านล่าง (Bottom Dock) จะกินพื้นที่สูงอย่างน้อย 250-350px + แถบเบราว์เซอร์ปกติ (~160px) รวมเป็น > 400px
         const widthDiff = window.outerWidth - window.innerWidth;
         const heightDiff = window.outerHeight - window.innerHeight;
-        if (widthDiff > threshold || heightDiff > threshold) {
+        const isSideDocked = widthDiff > 280;
+        const isBottomDocked = heightDiff > 320;
+
+        if (isSideDocked || isBottomDocked) {
           showDevToolsLock();
         } else {
           const overlay = document.getElementById('devtoolsLockOverlay');
-          if (overlay && !overlay.classList.contains('hidden')) {
+          if (overlay && (!overlay.classList.contains('hidden') || overlay.style.display !== 'none')) {
             hideDevToolsLock();
           }
         }
